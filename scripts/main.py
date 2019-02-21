@@ -25,9 +25,10 @@ except:
     print 'Couldn\'t import ROS.  I assume you\'re running this on your laptop'
     ros_enabled = False
 
+
 def lookup_transform(to_frame, from_frame='base'):
     """
-    Returns the AR tag position in world coordinates 
+    Returns the AR tag position in world coordinates
 
     Parameters
     ----------
@@ -49,20 +50,25 @@ def lookup_transform(to_frame, from_frame='base'):
     while attempts < max_attempts:
         try:
             t = listener.getLatestCommonTime(from_frame, to_frame)
-            tag_pos, tag_rot = listener.lookupTransform(from_frame, to_frame, t)
+            tag_pos, tag_rot = listener.lookupTransform(
+                from_frame, to_frame, t)
         except:
             rate.sleep()
             attempts += 1
     rot = RigidTransform.rotation_from_quaternion(tag_rot)
     return RigidTransform(rot, tag_pos, to_frame=from_frame, from_frame=to_frame)
 
+
 def execute_grasp(T_grasp_world, planner, gripper):
     """
-    takes in the desired hand position relative to the object, finds the desired 
-    hand position in world coordinates.  Then moves the gripper from its starting 
-    orientation to some distance BEHIND the object, then move to the  hand pose 
-    in world coordinates, closes the gripper, then moves up.  
-    
+    I think we need to add some heuristics on how to approach the object.
+    For example we should take gripper orientation and move back in that direction
+
+    takes in the desired hand position relative to the object, finds the desired
+    hand position in world coordinates.  Then moves the gripper from its starting
+    orientation to some distance BEHIND the object, then move to the  hand pose
+    in world coordinates, closes the gripper, then moves up.
+
     Parameters
     ----------
     T_grasp_world : :obj:`autolab_core.RigidTransform`
@@ -79,47 +85,53 @@ def execute_grasp(T_grasp_world, planner, gripper):
         rospy.sleep(1.0)
 
     inp = raw_input('Press <Enter> to move, or \'exit\' to exit')
+    # To move something:
+    # plan = plan_to_pose(target, orientation_constraints)
+    # execute_plan(plan)
+    # move to home position
+    # First move to target location - approach orientation * alpha lets call this pos0
+    # open the Gripper
+    # move to the target location ensure orientation constraint
+    # close the Gripper
+    # move back to position 0
+    # move to home position
+
     if inp == "exit":
         return
     raise NotImplementedError
+
 
 def parse_args():
     """
     Pretty self explanatory tbh
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument('-obj', type=str, default='gearbox', help=
-        """Which Object you\'re trying to pick up.  Options: gearbox, nozzle, pawn.  
+    parser.add_argument('-obj', type=str, default='gearbox', help="""Which Object you\'re trying to pick up.  Options: gearbox, nozzle, pawn.
         Default: gearbox"""
-    )
-    parser.add_argument('-n_vert', type=int, default=1000, help=
-        'How many vertices you want to sample on the object surface.  Default: 1000'
-    )
-    parser.add_argument('-n_facets', type=int, default=32, help=
-        """You will approximate the friction cone as a set of n_facets vectors along 
-        the surface.  This way, to check if a vector is within the friction cone, all 
-        you have to do is check if that vector can be represented by a POSITIVE 
+                        )
+    parser.add_argument('-n_vert', type=int, default=1000, help='How many vertices you want to sample on the object surface.  Default: 1000'
+                        )
+    parser.add_argument('-n_facets', type=int, default=32, help="""You will approximate the friction cone as a set of n_facets vectors along
+        the surface.  This way, to check if a vector is within the friction cone, all
+        you have to do is check if that vector can be represented by a POSITIVE
         linear combination of the n_facets vectors.  Default: 32"""
-    )
-    parser.add_argument('-n_grasps', type=int, default=500, help=
-        'How many grasps you want to sample.  Default: 500')
-    parser.add_argument('-n_execute', type=int, default=5, help=
-        'How many grasps you want to execute.  Default: 5')
-    parser.add_argument('-metric', '-m', type=str, default='compute_force_closure', help=
-        """Which grasp metric in grasp_metrics.py to use.  
+                        )
+    parser.add_argument('-n_grasps', type=int, default=500,
+                        help='How many grasps you want to sample.  Default: 500')
+    parser.add_argument('-n_execute', type=int, default=5,
+                        help='How many grasps you want to execute.  Default: 5')
+    parser.add_argument('-metric', '-m', type=str, default='compute_force_closure', help="""Which grasp metric in grasp_metrics.py to use.
         Options: compute_force_closure, compute_gravity_resistance, compute_custom_metric"""
-    )
-    parser.add_argument('-arm', '-a', type=str, default='left', help=
-        'Options: left, right.  Default: left'
-    )
-    parser.add_argument('--baxter', action='store_true', help=
-        """If you don\'t use this flag, you will only visualize the grasps.  This is 
+                        )
+    parser.add_argument('-arm', '-a', type=str, default='left', help='Options: left, right.  Default: left'
+                        )
+    parser.add_argument('--baxter', action='store_true', help="""If you don\'t use this flag, you will only visualize the grasps.  This is
         so you can run this on your laptop"""
-    )
-    parser.add_argument('--debug', action='store_true', help=
-        'Whether or not to use a random seed'
-    )
+                        )
+    parser.add_argument('--debug', action='store_true', help='Whether or not to use a random seed'
+                        )
     return parser.parse_args()
+
 
 if __name__ == '__main__':
     args = parse_args()
@@ -135,13 +147,13 @@ if __name__ == '__main__':
 
     # This policy takes a mesh and returns the best actions to execute on the robot
     grasping_policy = GraspingPolicy(
-        args.n_vert, 
-        args.n_grasps, 
-        args.n_execute, 
-        args.n_facets, 
+        args.n_vert,
+        args.n_grasps,
+        args.n_execute,
+        args.n_facets,
         args.metric
     )
-    # Each grasp is represented by T_grasp_world, a RigidTransform defining the 
+    # Each grasp is represented by T_grasp_world, a RigidTransform defining the
     # position of the end effector
     T_grasp_worlds = grasping_policy.top_n_actions(mesh, args.obj)
 

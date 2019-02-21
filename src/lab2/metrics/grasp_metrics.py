@@ -9,10 +9,11 @@ from lab2.utils import vec, adj, look_at_general
 import cvxpy as cvx
 import math
 
+
 def compute_force_closure(vertices, normals, num_facets, mu, gamma, object_mass):
     """
-    Compute the force closure of some object at contacts, with normal vectors 
-    stored in normals You can use the line method described in HW2.  if you do you 
+    Compute the force closure of some object at contacts, with normal vectors
+    stored in normals You can use the line method described in HW2.  if you do you
     will not need num_facets
 
     Parameters
@@ -22,9 +23,9 @@ def compute_force_closure(vertices, normals, num_facets, mu, gamma, object_mass)
     normals : 2x3 :obj:`numpy.ndarray`
         obj mesh normals at the contact points
     num_facets : int
-        number of vectors to use to approximate the friction cone.  these vectors 
+        number of vectors to use to approximate the friction cone.  these vectors
         will be along the friction cone boundary
-    mu : float 
+    mu : float
         coefficient of friction
     gamma : float
         torsional friction coefficient
@@ -36,10 +37,16 @@ def compute_force_closure(vertices, normals, num_facets, mu, gamma, object_mass)
     float : quality of the grasp
     """
     # YOUR CODE HERE
+    """
+    First get the line between two grasp points
+    calculate the friction cones
+    check if the line passes through both
+    """
     raise NotImplementedError
 
+
 def get_grasp_map(vertices, normals, num_facets, mu, gamma):
-    """ 
+    """
     defined in the book on page 219.  Compute the grasp map given the contact
     points and their surface normals
 
@@ -50,9 +57,9 @@ def get_grasp_map(vertices, normals, num_facets, mu, gamma):
     normals : 2x3 :obj:`numpy.ndarray`
         obj mesh normals at the contact points
     num_facets : int
-        number of vectors to use to approximate the friction cone.  these vectors 
+        number of vectors to use to approximate the friction cone.  these vectors
         will be along the friction cone boundary
-    mu : float 
+    mu : float
         coefficient of friction
     gamma : float
         torsional friction coefficient
@@ -64,10 +71,11 @@ def get_grasp_map(vertices, normals, num_facets, mu, gamma):
     # YOUR CODE HERE
     raise NotImplementedError
 
+
 def contact_forces_exist(vertices, normals, num_facets, mu, gamma, desired_wrench):
     """
-    Compute whether the given grasp (at contacts with surface normals) can produce 
-    the desired_wrench.  will be used for gravity resistance. 
+    Compute whether the given grasp (at contacts with surface normals) can produce
+    the desired_wrench.  will be used for gravity resistance.
 
     Parameters
     ----------
@@ -76,9 +84,9 @@ def contact_forces_exist(vertices, normals, num_facets, mu, gamma, desired_wrenc
     normals : 2x3 :obj:`numpy.ndarray`
         obj mesh normals at the contact points
     num_facets : int
-        number of vectors to use to approximate the friction cone.  these vectors 
+        number of vectors to use to approximate the friction cone.  these vectors
         will be along the friction cone boundary
-    mu : float 
+    mu : float
         coefficient of friction
     gamma : float
         torsional friction coefficient
@@ -92,9 +100,10 @@ def contact_forces_exist(vertices, normals, num_facets, mu, gamma, desired_wrenc
     # YOUR CODE HERE
     raise NotImplementedError
 
+
 def compute_gravity_resistance(vertices, normals, num_facets, mu, gamma, object_mass):
     """
-    Gravity produces some wrench on your object.  Computes whether the grasp can 
+    Gravity produces some wrench on your object.  Computes whether the grasp can
     produce and equal and opposite wrench
 
     Parameters
@@ -104,9 +113,9 @@ def compute_gravity_resistance(vertices, normals, num_facets, mu, gamma, object_
     normals : 2x3 :obj:`numpy.ndarray`
         obj mesh normals at the contact points
     num_facets : int
-        number of vectors to use to approximate the friction cone.  these vectors will 
+        number of vectors to use to approximate the friction cone.  these vectors will
         be along the friction cone boundary
-    mu : float 
+    mu : float
         coefficient of friction
     gamma : float
         torsional friction coefficient
@@ -117,12 +126,14 @@ def compute_gravity_resistance(vertices, normals, num_facets, mu, gamma, object_
     -------
     float : quality of the grasp
     """
+    # Design the gravity wrench, call contact_forces_exist on that
     # YOUR CODE HERE (contact forces exist may be useful here)
     raise NotImplementedError
 
+
 def compute_custom_metric(vertices, normals, num_facets, mu, gamma, object_mass):
     """
-    I suggest Ferrari Canny, but feel free to do anything other metric you find. 
+    I suggest Ferrari Canny, but feel free to do anything other metric you find.
 
     Parameters
     ----------
@@ -131,9 +142,9 @@ def compute_custom_metric(vertices, normals, num_facets, mu, gamma, object_mass)
     normals : 2x3 :obj:`numpy.ndarray`
         obj mesh normals at the contact points
     num_facets : int
-        number of vectors to use to approximate the friction cone.  these vectors will 
+        number of vectors to use to approximate the friction cone.  these vectors will
         be along the friction cone boundary
-    mu : float 
+    mu : float
         coefficient of friction
     gamma : float
         torsional friction coefficient

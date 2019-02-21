@@ -12,8 +12,8 @@ from visualization import Visualizer3D as vis3d
 
 # 106B lab imports
 from lab2.metrics import (
-    compute_force_closure, 
-    compute_gravity_resistance, 
+    compute_force_closure,
+    compute_gravity_resistance,
     compute_custom_metric
 )
 from lab2.utils import length, normalize
@@ -35,14 +35,14 @@ class GraspingPolicy():
         Parameters
         ----------
         n_vert : int
-            We are sampling vertices on the surface of the object, and will use pairs of 
+            We are sampling vertices on the surface of the object, and will use pairs of
             these vertices as grasp candidates
         n_grasps : int
             how many grasps to sample.  Each grasp is a pair of vertices
         n_execute : int
             how many grasps to return in policy.action()
         n_facets : int
-            how many facets should be used to approximate the friction cone between the 
+            how many facets should be used to approximate the friction cone between the
             finger and the object
         metric_name : string
             name of one of the function in src/lab2/metrics/metrics.py
@@ -56,29 +56,35 @@ class GraspingPolicy():
     def vertices_to_baxter_hand_pose(grasp_vertices, approach_direction):
         """
         takes the contacts positions in the object frame and returns the hand pose T_obj_gripper
-        BE CAREFUL ABOUT THE FROM FRAME AND TO FRAME.  the RigidTransform class' frames are 
+        BE CAREFUL ABOUT THE FROM FRAME AND TO FRAME.  the RigidTransform class' frames are
         weird.
-        
+
         Parameters
         ----------
         grasp_vertices : 2x3 :obj:`numpy.ndarray`
             position of the fingers in object frame
         approach_direction : 3x' :obj:`numpy.ndarray`
-            there are multiple grasps that go through contact1 and contact2.  This describes which 
+            there are multiple grasps that go through contact1 and contact2.  This describes which
             orientation the hand should be in
 
         Returns
         -------
         :obj:`autolab_core:RigidTransform` Hand pose in the object frame
         """
+        """
+        need to call autolab_core.RigidTransform(rotation=array([[ 1., 0., 0.], [ 0., 1., 0.], [ 0., 0., 1.]]),
+         \translation=array([ 0., 0., 0.]), from_frame=’unassigned’, to_frame=’world’))
+
+        """
         # YOUR CODE HERE
         raise NotImplementedError
 
     def sample_grasps(self, vertices, normals):
         """
+
         Samples a bunch of candidate grasps.  You should randomly choose pairs of vertices and throw out
-        pairs which are too big for the gripper, or too close too the table.  You should throw out vertices 
-        which are lower than ~3cm of the table.  You may want to change this.  Returns the pairs of 
+        pairs which are too big for the gripper, or too close too the table.  You should throw out vertices
+        which are lower than ~3cm of the table.  You may want to change this.  Returns the pairs of
         grasp vertices and grasp normals (the normals at the grasp vertices)
 
         Parameters
@@ -99,14 +105,25 @@ class GraspingPolicy():
             grasps normals.  Each grasp containts two contact points.  Each vertex normal
             is a 3 dimensional vector, and there are n_grasps of them, hence the shape n_graspsx2x3
         """
+
+        """
+        first throw out any vertices within 3cm of the table
+        for range (x):
+            pick two random vertices, check if they are within grasping size,
+            if they are add them and normals to the arrays
+            otherwise skip
+        """
+
         grasp_vertices = None
         grasp_normals = None
         raise NotImplementedError
 
     def score_grasps(self, grasp_vertices, grasp_normals, object_mass):
         """
+        this is pretty easy right, just call the metrics for each of the samples?
+
         takes mesh and returns pairs of contacts and the quality of grasp between the contacts, sorted by quality
-        
+
         Parameters
         ----------
         grasp_vertices : n_graspsx2x3 :obj:`numpy.ndarray`
@@ -119,7 +136,12 @@ class GraspingPolicy():
         Returns
         -------
         :obj:`list` of int
-            grasp quality for each 
+            grasp quality for each
+        """
+        """
+        for each grasp:
+            call:  metric(vertices, normals, num_facets, mu, gamma, object_mass
+            return list of these metrics
         """
         raise NotImplementedError
 
@@ -129,7 +151,7 @@ class GraspingPolicy():
         each grasp on the object and plot the grasps as a bar between the points, with
         colored dots on the line endpoints representing the grasp quality associated
         with each grasp
-        
+
         Parameters
         ----------
         mesh : :obj:`Trimesh`
@@ -141,28 +163,30 @@ class GraspingPolicy():
         """
         vis3d.mesh(mesh)
 
-        dirs = normalize(grasp_vertices[:,0] - grasp_vertices[:,1], axis=1)
-        midpoints = (grasp_vertices[:,0] + grasp_vertices[:,1]) / 2
+        dirs = normalize(grasp_vertices[:, 0] - grasp_vertices[:, 1], axis=1)
+        midpoints = (grasp_vertices[:, 0] + grasp_vertices[:, 1]) / 2
         grasp_endpoints = np.zeros(grasp_vertices.shape)
-        grasp_vertices[:,0] = midpoints + dirs*MAX_HAND_DISTANCE/2
-        grasp_vertices[:,1] = midpoints - dirs*MAX_HAND_DISTANCE/2
+        grasp_vertices[:, 0] = midpoints + dirs * MAX_HAND_DISTANCE / 2
+        grasp_vertices[:, 1] = midpoints - dirs * MAX_HAND_DISTANCE / 2
 
         for grasp, quality in zip(grasp_vertices, grasp_qualities):
-            color = [min(1, 2*(1-quality)), min(1, 2*quality), 0, 1]
+            color = [min(1, 2 * (1 - quality)), min(1, 2 * quality), 0, 1]
             vis3d.plot3d(grasp, color=color, tube_radius=.001)
         vis3d.show()
 
     def top_n_actions(self, mesh, obj_name, vis=True):
         """
-        Takes in a mesh, samples a bunch of grasps on the mesh, evaluates them using the 
+        call score grasps and return top n
+
+        Takes in a mesh, samples a bunch of grasps on the mesh, evaluates them using the
         metric given in the constructor, and returns the best grasps for the mesh.  SHOULD
         RETURN GRASPS IN ORDER OF THEIR GRASP QUALITY.
 
-        You should try to use mesh.mass to get the mass of the object.  You should check the 
+        You should try to use mesh.mass to get the mass of the object.  You should check the
         output of this, because from this
         https://github.com/BerkeleyAutomation/trimesh/blob/master/trimesh/base.py#L2203
         it would appear that the mass is approximated using the volume of the object.  If it
-        is not returning reasonable results, you can manually weight the objects and store 
+        is not returning reasonable results, you can manually weight the objects and store
         them in the dictionary at the top of the file.
 
         Parameters
@@ -177,6 +201,25 @@ class GraspingPolicy():
             the matrices T_grasp_world, which represents the hand poses of the baxter / sawyer
             which would result in the fingers being placed at the vertices of the best grasps
         """
-        # Some objects have vertices in odd places, so you should sample evenly across 
+        # Some objects have vertices in odd places, so you should sample evenly across
         # the mesh to get nicer candidate grasp points using trimesh.sample.sample_surface_even()
+
+        """
+        Use: trimesh.sample.sample_surface_even(mesh, count) and then throw out disqualified pairs
+            Parameters
+            ---------
+            mesh: Trimesh object
+            count: number of points to return
+            Returns
+            ---------
+            samples: (count,3) points in space on the surface of mesh
+            face_index: (count,) indices of faces for each sampled point
+
+            call sample_grasps(samples,normals ) we need to compute the normals
+                returns grasps vertices and grasps normals both 2x3
+             score_grasps(sample_grasps)
+             visualize if needed
+             call vertices_to_baxter_hand_pose(grasps, approach_direction)
+
+        """
         raise NotImplementedError
