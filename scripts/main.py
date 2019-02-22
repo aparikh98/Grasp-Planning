@@ -13,6 +13,8 @@ from autolab_core import RigidTransform
 import trimesh
 
 # 106B lab imports
+import os
+sys.path.append(os.getcwd().replace('scripts','') + '/src/')
 from lab2.policies import GraspingPolicy
 
 try:
@@ -20,6 +22,7 @@ try:
     import tf
     from baxter_interface import gripper as baxter_gripper
     from path_planner import PathPlanner
+    import tf.transformations as tfs
     ros_enabled = True
 except:
     print 'Couldn\'t import ROS.  I assume you\'re running this on your laptop'
@@ -84,21 +87,48 @@ def execute_grasp(T_grasp_world, planner, gripper):
         gripper.open(block=True)
         rospy.sleep(1.0)
 
+    final_pose = create_pose_from_rigid_transform(T_grasp_world)
+    eucl_orientation = tfs.euler_from_quaternion(quaternion)
+
+    orien_const = OrientationConstraint()
+    orien_const.link_name = "left_gripper";
+    orien_const.header.frame_id = "base";
+    orien_const.orientation = final_pose.orientation
+    orien_const.absolute_x_axis_tolerance = 0.1
+    orien_const.absolute_y_axis_tolerance = 0.1
+    orien_const.absolute_z_axis_tolerance = 0.1
+    orien_const.weight = 1.0
+
+    intermediate_pose = Pose()
+    intermediate_pose.position = final_pose
+    intermediate_pose.position = final_pose - (eucl_orientation * alpha) #if this doesn't work we can add this manually
+    intermediate_pose.orientation = final_pose.orientation
+
+    alpha = 0.1
     inp = raw_input('Press <Enter> to move, or \'exit\' to exit')
-    # To move something:
-    # plan = plan_to_pose(target, orientation_constraints)
-    # execute_plan(plan)
-    # move to home position
-    # First move to target location - approach orientation * alpha lets call this pos0
-    # open the Gripper
-    # move to the target location ensure orientation constraint
-    # close the Gripper
-    # move back to position 0
-    # move to home position
+
+    plan = planner.plan_to_pose(intermediate_pose, list())
+    planner.execute_plan(intermediate_pose)
+
+    inp = raw_input('Press <Enter> to open gripper, or \'exit\' to exit')
+    open_gripper()
+
+    inp = raw_input('Press <Enter> to move, or \'exit\' to exit')
+    plan2 = planner.plan_to_pose(final_pose, [orien_const])
+    planner.execute_plan(plan2)
+
+    inp = raw_input('Press <Enter> to close gripper, or \'exit\' to exit')
+    close_gripper()
+
+    inp = raw_input('Press <Enter> to move, or \'exit\' to exit')
+    plan3 = planner.plan_to_pose(intermediate_pose,[orien_const])
+    planner.execute_plan(plan3)
+
+    inp = raw_input('Press <Enter> to open gripper, or \'exit\' to exit')
+    open_gripper()
 
     if inp == "exit":
         return
-    raise NotImplementedError
 
 
 def parse_args():
@@ -161,6 +191,7 @@ if __name__ == '__main__':
     if args.baxter:
         gripper = baxter_gripper.Gripper(args.arm)
         planner = PathPlanner('{}_arm'.format(arm))
+        gripper.calibrate()
 
         for T_grasp_world in T_grasp_worlds:
             repeat = True
