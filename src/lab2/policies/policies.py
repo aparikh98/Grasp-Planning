@@ -8,6 +8,9 @@ import numpy as np
 # Autolab imports
 from autolab_core import RigidTransform
 import trimesh
+import matplotlib
+matplotlib.use('TkAgg')
+import matplotlib.pyplot as plt
 from visualization import Visualizer3D as vis3d
 
 # 106B lab imports
@@ -71,11 +74,11 @@ class GraspingPolicy():
         -------
         :obj:`autolab_core:RigidTransform` Hand pose in the object frame
         """
-        """
-        need to call autolab_core.RigidTransform(rotation=array([[ 1., 0., 0.], [ 0., 1., 0.], [ 0., 0., 1.]]),
-         \translation=array([ 0., 0., 0.]), from_frame=’unassigned’, to_frame=’world’))
 
-        """
+        #need to call autolab_core.RigidTransform(rotation=array([[ 1., 0., 0.], [ 0., 1., 0.], [ 0., 0., 1.]]),
+        # translation=array([ 0., 0., 0.]), from_frame='unassigned', to_frame='world'))
+
+
         # YOUR CODE HERE
         raise NotImplementedError
 
@@ -113,10 +116,32 @@ class GraspingPolicy():
             if they are add them and normals to the arrays
             otherwise skip
         """
+        new_vertices = []
+        new_normals = []
+        for vertice, normal in zip(vertices,normals):
+            if vertice[2] > 0.03: # vertice is 3cm over table
+                new_vertices.append(vertice)
+                new_normals.append(normal)
 
-        grasp_vertices = None
-        grasp_normals = None
-        raise NotImplementedError
+        n = len(new_vertices)
+        num_grasps = n
+
+        grasp_vertices = []
+        grasp_normals = []
+
+        for i in range(num_grasps):
+            c1 = np.random.uniform(0,n,1)
+            c2 = np.random.uniform(0,n,1)
+
+            vertice1 = new_vertices[c1,:]
+            vertice2 = new_vertices[c2,:]
+
+            distance = np.linalg.norm(vertice1,vertice2)
+            if distance > MIN_HAND_DISTANCE and distance < MAX_HAND_DISTANCE:
+                grasp_vertices.append([vertice1, vertice2])
+                grasp_normals.append([normals[c1,:],normals[c2,:]])
+
+        return grasp_vertices, grasp_normals
 
     def score_grasps(self, grasp_vertices, grasp_normals, object_mass):
         """
@@ -140,10 +165,16 @@ class GraspingPolicy():
         """
         """
         for each grasp:
-            call:  metric(vertices, normals, num_facets, mu, gamma, object_mass
+            call:  metric(vertices, normals, num_facets, mu, gamma, object_mass)
             return list of these metrics
         """
-        raise NotImplementedError
+
+        scores = []
+        for grasp_vertice,grasp_normal in zip(grasp_vertices,grasp_normals):
+            score = self.metric(grasp_vertice, grasp_normal, self.n_facets, CONTACT_MU, CONTACT_GAMMA, object_mass)
+            scores.append(score)
+
+        return scores
 
     def vis(self, mesh, grasp_vertices, grasp_qualities):
         """
@@ -173,6 +204,41 @@ class GraspingPolicy():
             color = [min(1, 2 * (1 - quality)), min(1, 2 * quality), 0, 1]
             vis3d.plot3d(grasp, color=color, tube_radius=.001)
         vis3d.show()
+
+
+    def calculate_normals(self,vertices, faces):
+        # source for calculating normals
+        # https://sites.google.com/site/dlampetest/python/calculating-normals-of-a-triangle-mesh-using-numpy
+
+        def normalize_v3(arr):
+            ''' Normalize a numpy array of 3 component vectors shape=(n,3) '''
+            lens = np.sqrt(arr[:, 0] ** 2 + arr[:, 1] ** 2 + arr[:, 2] ** 2)
+
+            arr[:, 0] /= lens
+            arr[:, 1] /= lens
+            arr[:, 2] /= lens
+
+            return arr
+
+        # Create a zeroed array with the same type and shape as our vertices i.e., per vertex normal
+        norm = np.zeros(faces.shape, dtype=vertices.dtype)
+        # Create an indexed view into the vertex array using the array of three indices for triangles
+        tris = vertices[faces]
+        # Calculate the normal for all the triangles, by taking the cross product of the vectors v1-v0, and v2-v0 in each triangle
+        n = np.cross(tris[::, 1] - tris[::, 0], tris[::, 2] - tris[::, 0])
+        # n is now an array of normals per triangle. The length of each normal is dependent the vertices,
+        # we need to normalize these, so that our next step weights each normal equally.
+        n = normalize_v3(n)
+        # now we have a normalized array of normals, one per triangle, i.e., per triangle normals.
+        # But instead of one per triangle (i.e., flat shading), we add to each vertex in that triangle,
+        # the triangles' normal. Multiple triangles would then contribute to every vertex, so we need to normalize again afterwards.
+        # The cool part, we can actually add the normals through an indexed view of our (zeroed) per vertex normal array
+        norm[faces[:, 0]] += n
+        norm[faces[:, 1]] += n
+        norm[faces[:, 2]] += n
+        norm = normalize_v3(norm)
+
+        return norm
 
     def top_n_actions(self, mesh, obj_name, vis=True):
         """
@@ -216,10 +282,38 @@ class GraspingPolicy():
             face_index: (count,) indices of faces for each sampled point
 
             call sample_grasps(samples,normals ) we need to compute the normals
-                returns grasps vertices and grasps normals both 2x3
+                returns grasps vertices and grasps normals both nx2x3
              score_grasps(sample_grasps)
              visualize if needed
              call vertices_to_baxter_hand_pose(grasps, approach_direction)
 
         """
-        raise NotImplementedError
+        topN = 10
+
+        samples, face_index = trimesh.sample.sample_surface_even(mesh, self.n_facets)
+
+        vertices = mesh.vertices
+        faces = mesh.faces
+
+        normals = self.calculate_normals(vertices,faces)
+        print(np.shape(faces), np.shape(normals), np.shape(vertices))
+        faces = faces[face_index]
+        normals = normals[faces]
+        vertices = vertices[faces]
+
+        print(np.shape(faces),np.shape(normals),np.shape(vertices))
+
+        grasp_vertices, grasp_normals = self.sample_grasps(vertices,normals)
+        grasp_qualities = self.score_grasps(grasp_vertices,grasp_normals,obj_name)
+
+        if vis:
+            self.vis(mesh, grasp_vertices, grasp_qualities)
+
+        top_n_idx = np.argsort(grasp_qualities)[-topN:]
+        top_n_grasp_vertices = [grasp_qualities[i] for i in top_n_idx]
+        top_n_grasp_normals = [grasp_qualities[i] for i in top_n_idx]
+        #top_n_grasp_scores = [grasp_qualities[i] for i in top_n_idx] #maybe we will need this...
+
+        #self.vertices_to_baxter_hand_pose()
+
+        return top_n_grasp_vertices, top_n_grasp_normals

@@ -25,7 +25,7 @@ try:
     import tf.transformations as tfs
     ros_enabled = True
 except:
-    print 'Couldn\'t import ROS.  I assume you\'re running this on your laptop'
+    print( 'Couldn\'t import ROS.  I assume you\'re running this on your laptop')
     ros_enabled = False
 
 
@@ -45,8 +45,8 @@ def lookup_transform(to_frame, from_frame='base'):
     :obj:`autolab_core.RigidTransform` AR tag position or object in world coordinates
     """
     if not ros_enabled:
-        print 'I am the lookup transform function!  ' \
-            + 'You\'re not using ROS, so I\'m returning the Identity Matrix.'
+        print( 'I am the lookup transform function!  ' \
+            + 'You\'re not using ROS, so I\'m returning the Identity Matrix.')
         return RigidTransform(to_frame=from_frame, from_frame=to_frame)
     listener = tf.TransformListener()
     attempts, max_attempts, rate = 0, 10, rospy.Rate(1.0)
@@ -171,9 +171,11 @@ if __name__ == '__main__':
 
     # Mesh loading and pre-processing
     mesh = trimesh.load_mesh('objects/{}.obj'.format(args.obj))
+
     T_obj_world = lookup_transform(args.obj)
     mesh.apply_transform(T_obj_world.matrix)
     mesh.fix_normals()
+
 
     # This policy takes a mesh and returns the best actions to execute on the robot
     grasping_policy = GraspingPolicy(
