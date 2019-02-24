@@ -136,7 +136,7 @@ def parse_args():
     Pretty self explanatory tbh
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument('-obj', type=str, default='gearbox', help="""Which Object you\'re trying to pick up.  Options: gearbox, nozzle, pawn.
+    parser.add_argument('-obj', type=str, default='pawn', help="""Which Object you\'re trying to pick up.  Options: gearbox, nozzle, pawn.
         Default: gearbox"""
                         )
     parser.add_argument('-n_vert', type=int, default=1000, help='How many vertices you want to sample on the object surface.  Default: 1000'

@@ -75,8 +75,10 @@ class GraspingPolicy():
         :obj:`autolab_core:RigidTransform` Hand pose in the object frame
         """
 
-        #need to call autolab_core.RigidTransform(rotation=array([[ 1., 0., 0.], [ 0., 1., 0.], [ 0., 0., 1.]]),
-        # translation=array([ 0., 0., 0.]), from_frame='unassigned', to_frame='world'))
+        #need to call
+
+        #autolab_core.RigidTransform(rotation=array([[ 1., 0., 0.], [ 0., 1., 0.], [ 0., 0., 1.]]),
+        #        translation=array([ 0., 0., 0.]), from_frame='unassigned', to_frame='world'))
 
 
         # YOUR CODE HERE
@@ -133,19 +135,22 @@ class GraspingPolicy():
         grasp_normals = []
 
         i = 0
-        while (i < num_grasps):
+        iter = 0
+        MAX_ITER = 1000
+        while (i < num_grasps and iter < MAX_ITER):
             c1 = np.random.randint(0,n,1)
             c2 = np.random.randint(0,n,1)
 
-            vertice1 = new_vertices[c1,:].flatten()
-            vertice2 = new_vertices[c2,:].flatten()
+            vertex1 = new_vertices[c1,:].flatten()
+            vertex2 = new_vertices[c2,:].flatten()
 
-            distance = np.linalg.norm(vertice1 - vertice2)
+            distance = np.linalg.norm(vertex1 - vertex2)
 
             if distance > MIN_HAND_DISTANCE and distance < MAX_HAND_DISTANCE:
-                grasp_vertices.append([vertice1, vertice2])
-                grasp_normals.append([normals[c1,:].flatten(),normals[c2,:].flatten()])
+                grasp_vertices.append([vertex1, vertex2])
+                grasp_normals.append([new_normals[c1,:].flatten(),new_normals[c2,:].flatten()])
                 i += 1
+            iter += 1
 
         return np.asarray(grasp_vertices), np.asarray(grasp_normals)
 
@@ -206,9 +211,12 @@ class GraspingPolicy():
         grasp_endpoints = np.zeros(grasp_vertices.shape)
         grasp_vertices[:, 0] = midpoints + dirs * MAX_HAND_DISTANCE / 2
         grasp_vertices[:, 1] = midpoints - dirs * MAX_HAND_DISTANCE / 2
-
-        for grasp, quality in zip(grasp_vertices, grasp_qualities):
+        colors = [[255,0,0],[0,255,0],[0,0,255]]
+        for i, (grasp, quality) in enumerate(zip(grasp_vertices, grasp_qualities)):
+            print("grasp")
+            print(grasp)
             color = [min(1, 2 * (1 - quality)), min(1, 2 * quality), 0, 1]
+            #vis3d.plot3d(grasp, color=colors[i%len(colors)], tube_radius=.001)
             vis3d.plot3d(grasp, color=color, tube_radius=.001)
         vis3d.show()
 
@@ -224,7 +232,6 @@ class GraspingPolicy():
 
             normal = np.cross(P0 - P1, P0 - P2)
             normal = normal / np.linalg.norm(normal)
-
 
             normals.append(normal)
 
@@ -288,23 +295,23 @@ class GraspingPolicy():
         faces = mesh.faces
 
         normals = self.calculate_normals(vertices,faces)
-
-        print(np.shape(normals), np.shape(faces), np.shape(vertices))
-
         normals = normals[face_index]
 
         grasp_vertices, grasp_normals = self.sample_grasps(samples,normals)
         grasp_qualities = self.score_grasps(grasp_vertices,grasp_normals,obj_name)
 
         if vis:
-            print(np.shape(grasp_vertices), np.shape(grasp_qualities))
+            print(grasp_vertices)
             self.vis(mesh, grasp_vertices, grasp_qualities)
 
         top_n_idx = np.argsort(grasp_qualities)[-topN:]
         top_n_grasp_vertices = [grasp_qualities[i] for i in top_n_idx]
         top_n_grasp_normals = [grasp_qualities[i] for i in top_n_idx]
         #top_n_grasp_scores = [grasp_qualities[i] for i in top_n_idx] #maybe we will need this...
+        print(np.linalg.norm(grasp_normals[0][0]))
 
-        #self.vertices_to_baxter_hand_pose()
+        approach_direction = np.mean(np.array(grasp_normals),axis=1)
+        print(np.linalg.norm(approach_direction[0]))
+        self.vertices_to_baxter_hand_pose(grasp_vertices, approach_direction)
 
         return top_n_grasp_vertices, top_n_grasp_normals
