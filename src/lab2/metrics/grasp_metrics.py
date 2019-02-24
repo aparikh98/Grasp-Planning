@@ -42,6 +42,33 @@ def compute_force_closure(vertices, normals, num_facets, mu, gamma, object_mass)
     calculate the friction cones
     check if the line passes through both
     """
+
+    m = num_facets
+    f1 = np.zeros(m)
+    f2 = np.zeros(m)
+
+    e1 = normals[0]
+    e2 = normals[1]
+
+    e1_z = [0,0,e1[2]]
+    e2_z = [0,0,e2[2]]
+
+    e1_x = [e1[0],0,0]
+    e2_x = [e2[0],0,0]
+
+    e1_y = [0,e1[1],0]
+    e2_y = [0,e2[1],0]
+
+    for i in range(m):
+        f1[i] = e1_z + np.cos(2*np.pi*i/m)* e1_x +np.sin(2*np.pi*i/m)*e1_y
+        f2[i] = e2_z + np.cos(2*np.pi*i/m)* e2_x +np.sin(2*np.pi*i/m)*e2_y
+
+    vec_c1_to_c2 = vertices[0,:] - vertices[1,:]
+    vec_c2_to_c1 = vertices[1,:] - vertices[0,:]
+
+    #TODO: try n times. lin.alg.solve. if positive combination exists, we have force closure.
+
+
     raise NotImplementedError
 
 
@@ -69,7 +96,18 @@ def get_grasp_map(vertices, normals, num_facets, mu, gamma):
     :obj:`numpy.ndarray` grasp map
     """
     # YOUR CODE HERE
-    raise NotImplementedError
+
+    B = np.array([[1,0,0],
+                  [0,1,0],
+                  [0,0,1],
+                  [0,0,0],
+                  [0,0,0],
+                  [0,0,0]])
+
+    # as everything is in world coordinates we don't need to transform coordinate systems with the adjoint.
+    G = np.array([B, B])
+
+    return G
 
 
 def contact_forces_exist(vertices, normals, num_facets, mu, gamma, desired_wrench):
@@ -97,9 +135,37 @@ def contact_forces_exist(vertices, normals, num_facets, mu, gamma, desired_wrenc
     -------
     bool : whether contact forces can produce the desired_wrench on the object
     """
-    # YOUR CODE HERE
-    raise NotImplementedError
 
+
+    m = num_facets
+    f1 = np.zeros(m)
+    f2 = np.zeros(m)
+
+    e1 = normals[0]
+    e2 = normals[1]
+
+    e1_z = [0,0,e1[2]]
+    e2_z = [0,0,e2[2]]
+
+    e1_x = [e1[0],0,0]
+    e2_x = [e2[0],0,0]
+
+    e1_y = [0,e1[1],0]
+    e2_y = [0,e2[1],0]
+
+    for i in range(m):
+        f1[i] = e1_z + np.cos(2*np.pi*i/m)* e1_x +np.sin(2*np.pi*i/m)*e1_y
+        f2[i] = e2_z + np.cos(2*np.pi*i/m)* e2_x +np.sin(2*np.pi*i/m)*e2_y
+
+    f = np.concatenate((f1,f2),axis=None)
+    G = get_grasp_map(vertices, normals, num_facets, mu, gamma)
+    F = np.matmul(G,f)
+
+    x = np.linalg.solve(F,desired_wrench)
+    if np.allclose(np.dot(F,x),desired_wrench):
+        return True
+    else:
+        return False
 
 def compute_gravity_resistance(vertices, normals, num_facets, mu, gamma, object_mass):
     """
@@ -128,8 +194,10 @@ def compute_gravity_resistance(vertices, normals, num_facets, mu, gamma, object_
     """
     # Design the gravity wrench, call contact_forces_exist on that
     # YOUR CODE HERE (contact forces exist may be useful here)
-    raise NotImplementedError
 
+    g = np.array([0,0,-9.81,0,0,0])
+
+    return contact_forces_exist(vertices, normals, num_facets, mu, gamma, g)
 
 def compute_custom_metric(vertices, normals, num_facets, mu, gamma, object_mass):
     """

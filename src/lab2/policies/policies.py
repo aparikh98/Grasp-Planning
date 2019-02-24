@@ -119,17 +119,20 @@ class GraspingPolicy():
             otherwise skip
         """
         # TODO when we find the high of the table vs real world position
+
         new_vertices = []
         new_normals = []
+
         for vertex, normal in zip(vertices,normals):
-            if vertex[2] > 0.03: # vertice is 3cm over table
+            if True: #vertex[2] > 0.03: # vertice is 3cm over table
                 new_vertices.append(vertex)
                 new_normals.append(normal)
         new_vertices = np.array(new_vertices)
         new_normals = np.array(new_normals)
 
         n = len(new_vertices)
-        num_grasps = 10
+
+        num_grasps = 100
 
         grasp_vertices = []
         grasp_normals = []
@@ -146,7 +149,7 @@ class GraspingPolicy():
 
             distance = np.linalg.norm(vertex1 - vertex2)
 
-            if distance > MIN_HAND_DISTANCE and distance < MAX_HAND_DISTANCE:
+            if distance != 0:#> MIN_HAND_DISTANCE and distance < MAX_HAND_DISTANCE:
                 grasp_vertices.append([vertex1, vertex2])
                 grasp_normals.append([new_normals[c1,:].flatten(),new_normals[c2,:].flatten()])
                 i += 1
@@ -183,7 +186,7 @@ class GraspingPolicy():
         scores = []
         for grasp_vertice,grasp_normal in zip(grasp_vertices,grasp_normals):
             #score = self.metric(grasp_vertice, grasp_normal, self.n_facets, CONTACT_MU, CONTACT_GAMMA, object_mass)
-            score = np.random.rand()
+            score = np.random.rand() + 0.5
             scores.append(score)
 
         return np.asarray(scores)
@@ -213,8 +216,6 @@ class GraspingPolicy():
         grasp_vertices[:, 1] = midpoints - dirs * MAX_HAND_DISTANCE / 2
         colors = [[255,0,0],[0,255,0],[0,0,255]]
         for i, (grasp, quality) in enumerate(zip(grasp_vertices, grasp_qualities)):
-            print("grasp")
-            print(grasp)
             color = [min(1, 2 * (1 - quality)), min(1, 2 * quality), 0, 1]
             #vis3d.plot3d(grasp, color=colors[i%len(colors)], tube_radius=.001)
             vis3d.plot3d(grasp, color=color, tube_radius=.001)
@@ -310,6 +311,7 @@ class GraspingPolicy():
         #top_n_grasp_scores = [grasp_qualities[i] for i in top_n_idx] #maybe we will need this...
         print(np.linalg.norm(grasp_normals[0][0]))
 
+        # How should we think about the approach direction
         approach_direction = np.mean(np.array(grasp_normals),axis=1)
         print(np.linalg.norm(approach_direction[0]))
         self.vertices_to_baxter_hand_pose(grasp_vertices, approach_direction)
