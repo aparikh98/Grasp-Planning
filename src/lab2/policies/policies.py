@@ -185,8 +185,8 @@ class GraspingPolicy():
 
         scores = []
         for grasp_vertice,grasp_normal in zip(grasp_vertices,grasp_normals):
-            #score = self.metric(grasp_vertice, grasp_normal, self.n_facets, CONTACT_MU, CONTACT_GAMMA, object_mass)
-            score = np.random.rand() + 0.5
+            score = self.metric(grasp_vertice, grasp_normal, self.n_facets, CONTACT_MU, CONTACT_GAMMA, object_mass)
+            #score = np.random.rand() + 0.5
             scores.append(score)
 
         return np.asarray(scores)
@@ -299,7 +299,7 @@ class GraspingPolicy():
         normals = normals[face_index]
 
         grasp_vertices, grasp_normals = self.sample_grasps(samples,normals)
-        grasp_qualities = self.score_grasps(grasp_vertices,grasp_normals,obj_name)
+        grasp_qualities = self.score_grasps(grasp_vertices,grasp_normals,OBJECT_MASS[obj_name])
 
         if vis:
             print(grasp_vertices)

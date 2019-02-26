@@ -9,6 +9,7 @@ from lab2.utils import vec, adj, look_at_general
 import cvxpy as cvx
 import math
 import osqp
+import scipy.sparse as sparse
 
 def compute_force_closure(vertices, normals, num_facets, mu, gamma, object_mass):
     """
@@ -44,16 +45,16 @@ def compute_force_closure(vertices, normals, num_facets, mu, gamma, object_mass)
     """
 
     m = num_facets
-    f1 = np.zeros(m)
-    f2 = np.zeros(m)
+    f1 = np.zeros((m,3))
+    f2 = np.zeros((m,3))
 
     # Find tangents and store them in a rotation matrix.
     R1 = look_at_general(vertices[0], normals[0])
     R2 = look_at_general(vertices[1], normals[1])
 
     for i in range(m):
-        f1[i] = normals[0] + np.cos(2*np.pi*i/m)* R1[0:3,0] +np.sin(2*np.pi*i/m)* R1[0:3,1]
-        f2[i] = normals[1] + np.cos(2*np.pi*i/m)* R2[0:3,0] +np.sin(2*np.pi*i/m)* R2[0:3,1]
+        f1[i,:] = normals[0] + np.cos(2*np.pi*i/m)* R1[0:3,0] +np.sin(2*np.pi*i/m)* R1[0:3,1]
+        f2[i,:] = normals[1] + np.cos(2*np.pi*i/m)* R2[0:3,0] +np.sin(2*np.pi*i/m)* R2[0:3,1]
 
     vec_c1_to_c2 = vertices[0,:] - vertices[1,:]
     vec_c2_to_c1 = vertices[1,:] - vertices[0,:]
@@ -61,13 +62,6 @@ def compute_force_closure(vertices, normals, num_facets, mu, gamma, object_mass)
     #TODO: try n times. lin.alg.solve. if positive combination exists, we have force closure.
     #TODO: quadprop solver: https://osqp.org/docs/interfaces/python.html#python-interface
 
-    P =
-    q =
-    A =
-
-    m = osqp.OSQP()
-    m.setup(P=P, q=q, A=A, l=0, u= np.inf)
-    results = m.solve()
 
     raise NotImplementedError
 
@@ -97,15 +91,26 @@ def get_grasp_map(vertices, normals, num_facets, mu, gamma):
     """
     # YOUR CODE HERE
 
-    B = np.array([[1,0,0],
-                  [0,1,0],
-                  [0,0,1],
-                  [0,0,0],
-                  [0,0,0],
-                  [0,0,0]])
+    if mu == 0:
+        print("Use point contact without friction")
+    if gamma == 0:
+        print("Do not use soft-finger bases")
+
+    B = np.array([[1,0,0,0],
+                  [0,1,0,0],
+                  [0,0,1,0],
+                  [0,0,0,0],
+                  [0,0,0,0],
+                  [0,0,0,1]])
+
+    g1 = look_at_general(vertices[0],normals[0])
+    A1 = np.linalg.inv(adj(g1))
+
+    g2 = look_at_general(vertices[1],normals[1])
+    A2 = np.linalg.inv(adj(g2))
 
     # as everything is in world coordinates we don't need to transform coordinate systems with the adjoint.
-    G = np.array([B, B])
+    G = np.hstack((np.matmul(A1,B), np.matmul(A2,B)))
 
     return G
 
@@ -136,34 +141,33 @@ def contact_forces_exist(vertices, normals, num_facets, mu, gamma, desired_wrenc
     bool : whether contact forces can produce the desired_wrench on the object
     """
 
-
-    m = num_facets
-    f1 = np.zeros(m)
-    f2 = np.zeros(m)
-
-    e1 = normals[0]
-    e2 = normals[1]
-
-    e1_z = [0,0,e1[2]]
-    e2_z = [0,0,e2[2]]
-
-    e1_x = [e1[0],0,0]
-    e2_x = [e2[0],0,0]
-
-    e1_y = [0,e1[1],0]
-    e2_y = [0,e2[1],0]
-
-    for i in range(m):
-        f1[i] = e1_z + np.cos(2*np.pi*i/m)* e1_x +np.sin(2*np.pi*i/m)*e1_y
-        f2[i] = e2_z + np.cos(2*np.pi*i/m)* e2_x +np.sin(2*np.pi*i/m)*e2_y
-
-    f = np.concatenate((f1,f2),axis=None)
     G = get_grasp_map(vertices, normals, num_facets, mu, gamma)
-    F = np.matmul(G,f)
 
-    x = np.linalg.solve(F,desired_wrench)
-    if np.allclose(np.dot(F,x),desired_wrench):
-        return True
+
+    P = sparse.csc_matrix(np.matmul(np.transpose(G),G))
+    q = sparse.csc_matrix(np.matmul(-G.T, desired_wrench))
+    A = sparse.csc_matrix([[0,0,-mu,0, 1, 1,0,0],
+                             [1,0,0,0,-1,0,0,0],
+                             [0,1,0,0,0,-1,0,0],
+                             [-1,0,0,0,-1,0,0,0],
+                             [0,-1,0,0,-1,0,0,0],
+                             [0,0,-1,0,0,0,0,0],
+                              [0,0,0,1,0,0,-1,0],
+                           [0, 0, 0, -1, 0, 0, -1,0],
+                           [0, 0, -gamma, 0, 0, 0, 1,0]])
+
+    l = sparse.csc_matrix(-np.inf*np.ones((9,1)))
+    u = sparse.csc_matrix(np.zeros((9,1)))
+
+    m = osqp.OSQP()
+    print(np.shape(P), np.shape(q), np.shape(A), np.shape(l), np.shape(u))
+    m.setup(P=P, q=q.T, A=A, l=l, u= u)
+    results = m.solve()
+
+    epsilon = 0.01
+
+    if np.linalg.norm(np.matmul(G,results.x[:4]) - desired_wrench) <= epsilon:
+        return True # There exists a correct solution
     else:
         return False
 
@@ -194,8 +198,8 @@ def compute_gravity_resistance(vertices, normals, num_facets, mu, gamma, object_
     """
     # Design the gravity wrench, call contact_forces_exist on that
     # YOUR CODE HERE (contact forces exist may be useful here)
-
-    g = np.array([0,0,-9.81 * object_mass,0,0,0])
+    print()
+    g = np.array([0,0,-9.81 * object_mass,0,0,0]).reshape((6,1))
 
     return contact_forces_exist(vertices, normals, num_facets, mu, gamma, g)
 
