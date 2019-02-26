@@ -8,7 +8,7 @@ import numpy as np
 from lab2.utils import vec, adj, look_at_general
 import cvxpy as cvx
 import math
-
+import osqp
 
 def compute_force_closure(vertices, normals, num_facets, mu, gamma, object_mass):
     """
@@ -47,27 +47,27 @@ def compute_force_closure(vertices, normals, num_facets, mu, gamma, object_mass)
     f1 = np.zeros(m)
     f2 = np.zeros(m)
 
-    e1 = normals[0]
-    e2 = normals[1]
-
-    e1_z = [0,0,e1[2]]
-    e2_z = [0,0,e2[2]]
-
-    e1_x = [e1[0],0,0]
-    e2_x = [e2[0],0,0]
-
-    e1_y = [0,e1[1],0]
-    e2_y = [0,e2[1],0]
+    # Find tangents and store them in a rotation matrix.
+    R1 = look_at_general(vertices[0], normals[0])
+    R2 = look_at_general(vertices[1], normals[1])
 
     for i in range(m):
-        f1[i] = e1_z + np.cos(2*np.pi*i/m)* e1_x +np.sin(2*np.pi*i/m)*e1_y
-        f2[i] = e2_z + np.cos(2*np.pi*i/m)* e2_x +np.sin(2*np.pi*i/m)*e2_y
+        f1[i] = normals[0] + np.cos(2*np.pi*i/m)* R1[0:3,0] +np.sin(2*np.pi*i/m)* R1[0:3,1]
+        f2[i] = normals[1] + np.cos(2*np.pi*i/m)* R2[0:3,0] +np.sin(2*np.pi*i/m)* R2[0:3,1]
 
     vec_c1_to_c2 = vertices[0,:] - vertices[1,:]
     vec_c2_to_c1 = vertices[1,:] - vertices[0,:]
 
     #TODO: try n times. lin.alg.solve. if positive combination exists, we have force closure.
+    #TODO: quadprop solver: https://osqp.org/docs/interfaces/python.html#python-interface
 
+    P =
+    q =
+    A =
+
+    m = osqp.OSQP()
+    m.setup(P=P, q=q, A=A, l=0, u= np.inf)
+    results = m.solve()
 
     raise NotImplementedError
 
@@ -195,7 +195,7 @@ def compute_gravity_resistance(vertices, normals, num_facets, mu, gamma, object_
     # Design the gravity wrench, call contact_forces_exist on that
     # YOUR CODE HERE (contact forces exist may be useful here)
 
-    g = np.array([0,0,-9.81,0,0,0])
+    g = np.array([0,0,-9.81 * object_mass,0,0,0])
 
     return contact_forces_exist(vertices, normals, num_facets, mu, gamma, g)
 
