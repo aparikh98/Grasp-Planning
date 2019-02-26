@@ -112,7 +112,7 @@ def get_grasp_map(vertices, normals, num_facets, mu, gamma):
     # as everything is in world coordinates we don't need to transform coordinate systems with the adjoint.
     G = np.hstack((np.matmul(A1,B), np.matmul(A2,B)))
 
-    return G
+    return G, np.matmul(A1,B), np.matmul(A2,B)
 
 
 def contact_forces_exist(vertices, normals, num_facets, mu, gamma, desired_wrench):
@@ -141,32 +141,57 @@ def contact_forces_exist(vertices, normals, num_facets, mu, gamma, desired_wrenc
     bool : whether contact forces can produce the desired_wrench on the object
     """
 
-    G = get_grasp_map(vertices, normals, num_facets, mu, gamma)
+    G, G1, G2 = get_grasp_map(vertices, normals, num_facets, mu, gamma)
+
+    P11 = np.matmul(G1.T, G1)
+    P12 = np.matmul(G1.T, G2)
+    P21 = np.matmul(G2.T, G1)
+    P22 = np.matmul(G2.T, G2)
+
+    C = np.zeros( (4,4) )
+
+    P = sparse.csc_matrix(np.vstack((np.hstack((P11,C,P12,C)),
+                  np.hstack((C,C,C,C)),
+                  np.hstack((P21,C,P22,C)),
+                  np.hstack((P11,C,P12,C)))))
+
+    q = - np.vstack((np.matmul(G1.T,desired_wrench),
+                    np.zeros((4,1)),
+                    np.matmul(G2.T, desired_wrench),
+                    np.zeros((4,1))))
+
+    #P = sparse.csc_matrix(np.matmul(np.transpose(G),G))
+    #q = np.asarray(np.matmul(-G.T, desired_wrench))
+
+    A = np.matrix([[0,0,-mu,0, 1, 1,0,0],
+                         [1,0,0,0,-1,0,0,0],
+                         [0,1,0,0,0,-1,0,0],
+                         [-1,0,0,0,-1,0,0,0],
+                         [0,-1,0,0,-1,0,0,0],
+                         [0,0,-1,0,0,0,0,0],
+                         [0,0,0,1,0,0,-1,0],
+                         [0, 0, 0, -1, 0, 0, -1,0],
+                         [0, 0, -gamma, 0, 0, 0, 1,0]])
 
 
-    P = sparse.csc_matrix(np.matmul(np.transpose(G),G))
-    q = sparse.csc_matrix(np.matmul(-G.T, desired_wrench))
-    A = sparse.csc_matrix([[0,0,-mu,0, 1, 1,0,0],
-                             [1,0,0,0,-1,0,0,0],
-                             [0,1,0,0,0,-1,0,0],
-                             [-1,0,0,0,-1,0,0,0],
-                             [0,-1,0,0,-1,0,0,0],
-                             [0,0,-1,0,0,0,0,0],
-                              [0,0,0,1,0,0,-1,0],
-                           [0, 0, 0, -1, 0, 0, -1,0],
-                           [0, 0, -gamma, 0, 0, 0, 1,0]])
+    A =sparse.csc_matrix(np.vstack((np.hstack((A, np.zeros_like(A))),
+                  np.hstack((np.zeros_like(A), A)))))
 
-    l = sparse.csc_matrix(-np.inf*np.ones((9,1)))
-    u = sparse.csc_matrix(np.zeros((9,1)))
-
+    l = np.asarray(-np.inf*np.ones((18,1)))
+    u = np.asarray(np.zeros((18,1)))
+    print(np.shape(P),np.shape(q),np.shape(A),np.shape(l),np.shape(u))
     m = osqp.OSQP()
-    print(np.shape(P), np.shape(q), np.shape(A), np.shape(l), np.shape(u))
-    m.setup(P=P, q=q.T, A=A, l=l, u= u)
-    results = m.solve()
 
+    m.setup(P=P, q=q, A=A, l=l, u= u)
+    results = m.solve()
+    print(results.x)
     epsilon = 0.01
 
-    if np.linalg.norm(np.matmul(G,results.x[:4]) - desired_wrench) <= epsilon:
+    f = np.asarray([results.x[0],results.x[1],results.x[2], results.x[3],
+                    results.x[8],results.x[9],results.x[10], results.x[11]]).reshape((8,1))
+
+    print(np.shape(f),np.shape(G))
+    if np.linalg.norm(np.matmul(G,f) - desired_wrench) <= epsilon:
         return True # There exists a correct solution
     else:
         return False
