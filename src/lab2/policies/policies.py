@@ -224,7 +224,7 @@ class GraspingPolicy():
 
     def calculate_normals(self,vertices, faces):
         # source for calculating normals
-
+        # For each face we calculate a normal
         normals = []
         for triangle in faces:
             P0 = vertices[triangle[0]]
@@ -302,18 +302,15 @@ class GraspingPolicy():
         grasp_qualities = self.score_grasps(grasp_vertices,grasp_normals,OBJECT_MASS[obj_name])
 
         if vis:
-            print(grasp_vertices)
             self.vis(mesh, grasp_vertices, grasp_qualities)
 
         top_n_idx = np.argsort(grasp_qualities)[-topN:]
         top_n_grasp_vertices = [grasp_qualities[i] for i in top_n_idx]
         top_n_grasp_normals = [grasp_qualities[i] for i in top_n_idx]
         #top_n_grasp_scores = [grasp_qualities[i] for i in top_n_idx] #maybe we will need this...
-        print(np.linalg.norm(grasp_normals[0][0]))
 
         # How should we think about the approach direction
         approach_direction = np.mean(np.array(grasp_normals),axis=1)
-        print(np.linalg.norm(approach_direction[0]))
         self.vertices_to_baxter_hand_pose(grasp_vertices, approach_direction)
 
         return top_n_grasp_vertices, top_n_grasp_normals

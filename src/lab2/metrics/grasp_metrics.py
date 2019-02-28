@@ -10,6 +10,7 @@ import cvxpy as cvx
 import math
 import osqp
 import scipy.sparse as sparse
+from numpy.linalg import norm
 
 def compute_force_closure(vertices, normals, num_facets, mu, gamma, object_mass):
     """
@@ -44,27 +45,24 @@ def compute_force_closure(vertices, normals, num_facets, mu, gamma, object_mass)
     check if the line passes through both
     """
 
-    m = num_facets
-    f1 = np.zeros((m,3))
-    f2 = np.zeros((m,3))
-
     # Find tangents and store them in a rotation matrix.
     R1 = look_at_general(vertices[0], normals[0])
     R2 = look_at_general(vertices[1], normals[1])
 
-    for i in range(m):
-        f1[i,:] = normals[0] + np.cos(2*np.pi*i/m)* R1[0:3,0] +np.sin(2*np.pi*i/m)* R1[0:3,1]
-        f2[i,:] = normals[1] + np.cos(2*np.pi*i/m)* R2[0:3,0] +np.sin(2*np.pi*i/m)* R2[0:3,1]
+    theta = 0.2 # We should be able to choose this independently, but it changes the results..
+    f1 = normals[0] + np.cos(theta)* R1[0:3,0] +np.sin(theta)* R1[0:3,1]
+    f2 = normals[1] + np.cos(theta)* R2[0:3,0] +np.sin(theta)* R2[0:3,1]
 
-    vec_c1_to_c2 = vertices[0,:] - vertices[1,:]
-    vec_c2_to_c1 = vertices[1,:] - vertices[0,:]
+    line = vertices[1,:] - vertices[0,:]
 
-    #TODO: try n times. lin.alg.solve. if positive combination exists, we have force closure.
-    #TODO: quadprop solver: https://osqp.org/docs/interfaces/python.html#python-interface
+    # we compare the angles between the line and the normal with the angle between fc vector and the normal
+    line_in_FC1 = abs(np.matmul(line, normals[0]) / (norm(line) * norm(normals[0]))) > \
+                  abs(np.matmul(line, f1) / (norm(line) * norm(f1)))
 
+    line_in_FC2 = abs(np.matmul(-line, normals[1]) / (norm(-line) * norm(normals[1]))) > \
+                  abs(np.matmul(-line, f2) / (norm(-line) * norm(f2)))
 
-    raise NotImplementedError
-
+    return line_in_FC1 and line_in_FC2
 
 def get_grasp_map(vertices, normals, num_facets, mu, gamma):
     """
@@ -113,7 +111,6 @@ def get_grasp_map(vertices, normals, num_facets, mu, gamma):
     G = np.hstack((np.matmul(A1,B), np.matmul(A2,B)))
 
     return G, np.matmul(A1,B), np.matmul(A2,B)
-
 
 def contact_forces_exist(vertices, normals, num_facets, mu, gamma, desired_wrench):
     """
@@ -190,7 +187,6 @@ def contact_forces_exist(vertices, normals, num_facets, mu, gamma, desired_wrenc
     f = np.asarray([results.x[0],results.x[1],results.x[2], results.x[3],
                     results.x[8],results.x[9],results.x[10], results.x[11]]).reshape((8,1))
 
-    print(np.shape(f),np.shape(G))
     if np.linalg.norm(np.matmul(G,f) - desired_wrench) <= epsilon:
         return True # There exists a correct solution
     else:
