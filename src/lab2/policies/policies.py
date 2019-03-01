@@ -294,9 +294,10 @@ class GraspingPolicy():
 
         vertices = mesh.vertices
         faces = mesh.faces
+        face_normals = mesh.face_normals
 
-        normals = self.calculate_normals(vertices,faces)
-        normals = normals[face_index]
+        #normals = self.calculate_normals(vertices,faces)
+        normals = face_normals[face_index]
 
         grasp_vertices, grasp_normals = self.sample_grasps(samples,normals)
         grasp_qualities = self.score_grasps(grasp_vertices,grasp_normals,OBJECT_MASS[obj_name])
