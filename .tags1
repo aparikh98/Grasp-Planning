@@ -1,0 +1,40 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	0	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.8	//
+np	/Users/aakash/Documents/106b/lab2_pkg/scripts/main.py	/^import numpy as np$/;"	namespace	line:6
+scipy	/Users/aakash/Documents/106b/lab2_pkg/scripts/main.py	/^import scipy$/;"	namespace	line:7
+sys	/Users/aakash/Documents/106b/lab2_pkg/scripts/main.py	/^import sys$/;"	namespace	line:8
+argparse	/Users/aakash/Documents/106b/lab2_pkg/scripts/main.py	/^import argparse$/;"	namespace	line:9
+RigidTransform	/Users/aakash/Documents/106b/lab2_pkg/scripts/main.py	/^from autolab_core import RigidTransform$/;"	namespace	line:12
+trimesh	/Users/aakash/Documents/106b/lab2_pkg/scripts/main.py	/^import trimesh$/;"	namespace	line:13
+os	/Users/aakash/Documents/106b/lab2_pkg/scripts/main.py	/^import os$/;"	namespace	line:16
+GraspingPolicy	/Users/aakash/Documents/106b/lab2_pkg/scripts/main.py	/^from lab2.policies import GraspingPolicy$/;"	namespace	line:18
+rospy	/Users/aakash/Documents/106b/lab2_pkg/scripts/main.py	/^    import rospy$/;"	namespace	line:21
+tf	/Users/aakash/Documents/106b/lab2_pkg/scripts/main.py	/^    import tf$/;"	namespace	line:22
+baxter_gripper	/Users/aakash/Documents/106b/lab2_pkg/scripts/main.py	/^    from baxter_interface import gripper as baxter_gripper$/;"	namespace	line:23
+PathPlanner	/Users/aakash/Documents/106b/lab2_pkg/scripts/main.py	/^    from path_planner import PathPlanner$/;"	namespace	line:24
+tf	/Users/aakash/Documents/106b/lab2_pkg/scripts/main.py	/^    import tf.transformations as tfs$/;"	namespace	line:25
+tfs	/Users/aakash/Documents/106b/lab2_pkg/scripts/main.py	/^    import tf.transformations as tfs$/;"	namespace	line:25
+ros_enabled	/Users/aakash/Documents/106b/lab2_pkg/scripts/main.py	/^    ros_enabled = True$/;"	variable	line:26
+ROS	/Users/aakash/Documents/106b/lab2_pkg/scripts/main.py	/^    print 'Couldn\\'t import ROS.  I assume you\\'re running this on your laptop'$/;"	namespace	line:28
+I	/Users/aakash/Documents/106b/lab2_pkg/scripts/main.py	/^    print 'Couldn\\'t import ROS.  I assume you\\'re running this on your laptop'$/;"	namespace	line:28
+assume	/Users/aakash/Documents/106b/lab2_pkg/scripts/main.py	/^    print 'Couldn\\'t import ROS.  I assume you\\'re running this on your laptop'$/;"	namespace	line:28
+you	/Users/aakash/Documents/106b/lab2_pkg/scripts/main.py	/^    print 'Couldn\\'t import ROS.  I assume you\\'re running this on your laptop'$/;"	namespace	line:28
+ros_enabled	/Users/aakash/Documents/106b/lab2_pkg/scripts/main.py	/^    ros_enabled = False$/;"	variable	line:29
+lookup_transform	/Users/aakash/Documents/106b/lab2_pkg/scripts/main.py	/^def lookup_transform(to_frame, from_frame='base'):$/;"	function	line:32
+execute_grasp	/Users/aakash/Documents/106b/lab2_pkg/scripts/main.py	/^def execute_grasp(T_grasp_world, planner, gripper):$/;"	function	line:65
+close_gripper	/Users/aakash/Documents/106b/lab2_pkg/scripts/main.py	/^    def close_gripper():$/;"	function	line:80	function:execute_grasp
+open_gripper	/Users/aakash/Documents/106b/lab2_pkg/scripts/main.py	/^    def open_gripper():$/;"	function	line:85	function:execute_grasp
+parse_args	/Users/aakash/Documents/106b/lab2_pkg/scripts/main.py	/^def parse_args():$/;"	function	line:134
+args	/Users/aakash/Documents/106b/lab2_pkg/scripts/main.py	/^    args = parse_args()$/;"	variable	line:167
+mesh	/Users/aakash/Documents/106b/lab2_pkg/scripts/main.py	/^    mesh = trimesh.load_mesh('objects\/{}.obj'.format(args.obj))$/;"	variable	line:173
+T_obj_world	/Users/aakash/Documents/106b/lab2_pkg/scripts/main.py	/^    T_obj_world = lookup_transform(args.obj)$/;"	variable	line:174
+grasping_policy	/Users/aakash/Documents/106b/lab2_pkg/scripts/main.py	/^    grasping_policy = GraspingPolicy($/;"	variable	line:179
+T_grasp_worlds	/Users/aakash/Documents/106b/lab2_pkg/scripts/main.py	/^    T_grasp_worlds = grasping_policy.top_n_actions(mesh, args.obj)$/;"	variable	line:188
+gripper	/Users/aakash/Documents/106b/lab2_pkg/scripts/main.py	/^        gripper = baxter_gripper.Gripper(args.arm)$/;"	variable	line:192
+planner	/Users/aakash/Documents/106b/lab2_pkg/scripts/main.py	/^        planner = PathPlanner('{}_arm'.format(arm))$/;"	variable	line:193
+repeat	/Users/aakash/Documents/106b/lab2_pkg/scripts/main.py	/^            repeat = True$/;"	variable	line:197
+repeat	/Users/aakash/Documents/106b/lab2_pkg/scripts/main.py	/^                repeat = raw_input("repeat? [y|n] ") == 'y'$/;"	variable	line:200
