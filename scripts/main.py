@@ -44,22 +44,22 @@ def lookup_transform(to_frame, from_frame='base'):
     -------
     :obj:`autolab_core.RigidTransform` AR tag position or object in world coordinates
     """
-    if not ros_enabled:
-        print( 'I am the lookup transform function!  ' \
-            + 'You\'re not using ROS, so I\'m returning the Identity Matrix.')
-        return RigidTransform(to_frame=from_frame, from_frame=to_frame)
-    listener = tf.TransformListener()
-    attempts, max_attempts, rate = 0, 10, rospy.Rate(1.0)
-    while attempts < max_attempts:
-        try:
-            t = listener.getLatestCommonTime(from_frame, to_frame)
-            tag_pos, tag_rot = listener.lookupTransform(
-                from_frame, to_frame, t)
-        except:
-            rate.sleep()
-            attempts += 1
-    rot = RigidTransform.rotation_from_quaternion(tag_rot)
-    return RigidTransform(rot, tag_pos, to_frame=from_frame, from_frame=to_frame)
+    # if not ros_enabled:
+    print( 'I am the lookup transform function!  ' \
+        + 'You\'re not using ROS, so I\'m returning the Identity Matrix.')
+    return RigidTransform(to_frame=from_frame, from_frame=to_frame)
+    # listener = tf.TransformListener()
+    # attempts, max_attempts, rate = 0, 10, rospy.Rate(1.0)
+    # while attempts < max_attempts:
+    #     try:
+    #         t = listener.getLatestCommonTime(from_frame, to_frame)
+    #         tag_pos, tag_rot = listener.lookupTransform(
+    #             from_frame, to_frame, t)
+    #     except:
+    #         rate.sleep()
+    #         attempts += 1
+    # rot = RigidTransform.rotation_from_quaternion(tag_rot)
+    # return RigidTransform(rot, tag_pos, to_frame=from_frame, from_frame=to_frame)
 
 
 def execute_grasp(T_grasp_world, planner, gripper):
@@ -103,6 +103,10 @@ def execute_grasp(T_grasp_world, planner, gripper):
     intermediate_pose.position = final_pose
     intermediate_pose.position = final_pose - (eucl_orientation * alpha) #if this doesn't work we can add this manually
     intermediate_pose.orientation = final_pose.orientation
+    print("intermediate Pose", intermediate_pose)
+
+    print("Final Pose", final_pose)
+    return
 
     alpha = 0.1
     inp = raw_input('Press <Enter> to move, or \'exit\' to exit')
@@ -171,7 +175,6 @@ if __name__ == '__main__':
 
     # Mesh loading and pre-processing
     mesh = trimesh.load_mesh('objects/{}.obj'.format(args.obj))
-
     T_obj_world = lookup_transform(args.obj)
     mesh.apply_transform(T_obj_world.matrix)
     mesh.fix_normals()
@@ -191,6 +194,7 @@ if __name__ == '__main__':
 
     # Execute each grasp on the baxter / sawyer
     if args.baxter:
+        rospy.init_node('moveit_node')
         gripper = baxter_gripper.Gripper(args.arm)
         planner = PathPlanner('{}_arm'.format(arm))
         gripper.calibrate()

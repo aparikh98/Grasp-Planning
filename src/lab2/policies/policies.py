@@ -312,6 +312,6 @@ class GraspingPolicy():
 
         # How should we think about the approach direction
         approach_direction = np.mean(np.array(grasp_normals),axis=1)
-        self.vertices_to_baxter_hand_pose(grasp_vertices, approach_direction)
+        vertices_to_baxter_hand_pose(grasp_vertices, approach_direction)
 
         return top_n_grasp_vertices, top_n_grasp_normals
