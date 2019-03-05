@@ -291,7 +291,7 @@ class GraspingPolicy():
              call vertices_to_baxter_hand_pose(grasps, approach_direction)
 
         """
-        topN = 1
+        topN = 10
 
         samples, face_index = trimesh.sample.sample_surface_even(mesh, self.n_facets)
         vertices = mesh.vertices
@@ -304,13 +304,16 @@ class GraspingPolicy():
         grasp_vertices, grasp_normals = self.sample_grasps(samples,normals)
         grasp_qualities = self.score_grasps(grasp_vertices,grasp_normals,OBJECT_MASS[obj_name])
 
-        if vis and True:
+        if vis and False:
             self.vis(mesh, grasp_vertices, grasp_qualities)
 
-        top_n_idx = np.argsort(grasp_qualities)[-topN:]
+        top_n_idx = np.argsort(grasp_qualities)[-topN:][::-1]
         top_n_grasp_vertices = [grasp_vertices[i] for i in top_n_idx]
         top_n_grasp_normals = [grasp_normals[i] for i in top_n_idx]
-        #top_n_grasp_scores = [grasp_qualities[i] for i in top_n_idx] #maybe we will need this...
+        top_n_grasp_scores = [grasp_qualities[i] for i in top_n_idx] #maybe we will need this...
+        print("The top n grasp scores are: ")
+        for score in top_n_grasp_scores:
+            print(score)
 
         # How should we think about the approach direction
         approach_direction = np.mean(np.array(top_n_grasp_normals),axis=1)
