@@ -12,6 +12,7 @@ import matplotlib
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 from visualization import Visualizer3D as vis3d
+import utils
 
 # 106B lab imports
 from lab2.metrics import (
@@ -76,13 +77,12 @@ class GraspingPolicy():
         """
 
         #need to call
+        t = np.mean(grasp_vertices, axis = 1)
+        R = utils.look_at_general(t, approach_direction)
 
-        #autolab_core.RigidTransform(rotation=array([[ 1., 0., 0.], [ 0., 1., 0.], [ 0., 0., 1.]]),
-        #        translation=array([ 0., 0., 0.]), from_frame='unassigned', to_frame='world'))
+        return autolab_core.RigidTransform(rotation=R, translation = t)
 
 
-        # YOUR CODE HERE
-        raise NotImplementedError
 
     def sample_grasps(self, vertices, normals):
         """
@@ -291,7 +291,7 @@ class GraspingPolicy():
         topN = 10
 
         samples, face_index = trimesh.sample.sample_surface_even(mesh, self.n_facets)
-
+        print("mesh", mesh._center_mass)
         vertices = mesh.vertices
         faces = mesh.faces
         face_normals = mesh.face_normals
@@ -312,6 +312,7 @@ class GraspingPolicy():
 
         # How should we think about the approach direction
         approach_direction = np.mean(np.array(grasp_normals),axis=1)
+
         self.vertices_to_baxter_hand_pose(grasp_vertices, approach_direction)
 
         return top_n_grasp_vertices, top_n_grasp_normals
