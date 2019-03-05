@@ -249,16 +249,23 @@ def compute_custom_metric(vertices, normals, num_facets, mu, gamma, object_mass)
     float : quality of the grasp
     """
     # YOUR CODE HERE :)
-    for scale_mu  in np.linspace(0, mu, 10):
-        mu = np.random.normal(loc = mu, scale = scale_mu)
 
-    for scale_gamma  in np.linspace(0, gamma, 10):
-        gamma = np.random.normal(loc = gamma, scale = scale_gamma)
+    scale_mu = 0.4
+    scale_gamma = 0.5
+    scale_vertices = 0.01
+    scale_normals = 0.01
 
-    for scale_vertices  in np.linspace(0, 0.01, 10):
-        vertices = np.random.normal(loc = vertices, scale = scale_vertices)
+    num_experiments = 100
+    avg_force_close = 0.0
 
-    for scale_normals in np.linspace(0, 0.01, 10):
-        normals = np.random.normal(loc = normals, scale = scale_normals)
+    for i in range(num_experiments):
+        mu_noise = np.random.normal(loc = mu, scale = scale_mu)
+        gamma_noise = np.random.normal(loc = gamma, scale = scale_gamma)
+        vertices_noise = np.random.normal(loc = vertices, scale = scale_vertices)
+        normals_noise = np.random.normal(loc = normals, scale = scale_normals)
 
-    compute_force_closure(vertices, normals, num_facets, mu, gamma, object_mass)   
+        force_closure = compute_force_closure(vertices_noise, normals_noise, num_facets, mu_noise, gamma_noise, object_mass)
+        if force_closure:
+            avg_force_close += 1.0
+
+    return (avg_force_close / num_experiments)
