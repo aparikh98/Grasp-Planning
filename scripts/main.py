@@ -23,6 +23,8 @@ try:
     from baxter_interface import gripper as baxter_gripper
     from path_planner import PathPlanner
     import tf.transformations as tfs
+    from geometry_msgs.msg import Pose, PoseStamped
+    from moveit_msgs.msg import OrientationConstraint
     ros_enabled = True
 except:
     print( 'Couldn\'t import ROS.  I assume you\'re running this on your laptop')
@@ -87,8 +89,19 @@ def execute_grasp(T_grasp_world, planner, gripper):
         gripper.open(block=True)
         rospy.sleep(1.0)
 
-    final_pose = create_pose_from_rigid_transform(T_grasp_world)
-    eucl_orientation = tfs.euler_from_quaternion(quaternion)
+    final_position = T_grasp_world.position
+    final_quaternion = T_grasp_world.quaternion
+    eucl_orientation = tfs.euler_from_quaternion(T_grasp_world.quaternion)
+    
+    final_pose = Pose()
+    final_pose.position.x = final_position[0]
+    final_pose.position.y = final_position[1]
+    final_pose.position.z = final_position[2]
+    final_pose.orientation.x = final_quaternion[0]
+    final_pose.orientation.y = final_quaternion[1]
+    final_pose.orientation.z = final_quaternion[2]
+    final_pose.orientation.w = final_quaternion[3]
+    print("Final Pose", final_pose)
 
     orien_const = OrientationConstraint()
     orien_const.link_name = "left_gripper";
@@ -98,17 +111,21 @@ def execute_grasp(T_grasp_world, planner, gripper):
     orien_const.absolute_y_axis_tolerance = 0.1
     orien_const.absolute_z_axis_tolerance = 0.1
     orien_const.weight = 1.0
-
+   
+    alpha = 0.1
     intermediate_pose = Pose()
-    intermediate_pose.position = final_pose
-    intermediate_pose.position = final_pose - (eucl_orientation * alpha) #if this doesn't work we can add this manually
-    intermediate_pose.orientation = final_pose.orientation
+    intermediate_pose.position.x = final_position[0] - eucl_orientation[0] * alpha
+    intermediate_pose.position.y = final_position[1]  - eucl_orientation[1] * alpha
+    intermediate_pose.position.z = final_position[2] - eucl_orientation[2] * alpha
+    intermediate_pose.orientation.x = final_quaternion[0]
+    intermediate_pose.orientation.y = final_quaternion[1]
+    intermediate_pose.orientation.z = final_quaternion[2]
+    intermediate_pose.orientation.w = final_quaternion[3]
+
     print("intermediate Pose", intermediate_pose)
 
-    print("Final Pose", final_pose)
     return
 
-    alpha = 0.1
     inp = raw_input('Press <Enter> to move, or \'exit\' to exit')
 
     plan = planner.plan_to_pose(intermediate_pose, list())
@@ -196,7 +213,7 @@ if __name__ == '__main__':
     if args.baxter:
         rospy.init_node('moveit_node')
         gripper = baxter_gripper.Gripper(args.arm)
-        planner = PathPlanner('{}_arm'.format(arm))
+        planner = PathPlanner('{}_arm'.format(args.arm))
         gripper.calibrate()
 
         for T_grasp_world in T_grasp_worlds:

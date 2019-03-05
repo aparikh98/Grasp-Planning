@@ -57,7 +57,7 @@ class GraspingPolicy():
         # This is a function, one of the functions in src/lab2/metrics/metrics.py
         self.metric = eval(metric_name)
 
-    def vertices_to_baxter_hand_pose(grasp_vertices, approach_direction):
+    def vertices_to_baxter_hand_pose(self, grasp_vertices, approach_directions):
         """
         takes the contacts positions in the object frame and returns the hand pose T_obj_gripper
         BE CAREFUL ABOUT THE FROM FRAME AND TO FRAME.  the RigidTransform class' frames are
@@ -75,12 +75,15 @@ class GraspingPolicy():
         -------
         :obj:`autolab_core:RigidTransform` Hand pose in the object frame
         """
-
+        T_grasp_worlds = []
         #need to call
-        t = np.mean(grasp_vertices, axis = 1)
-        R = utils.look_at_general(t, approach_direction)
-
-        return autolab_core.RigidTransform(rotation=R, translation = t)
+        for grasps_vertex, approach_direction in zip(grasp_vertices, approach_directions):
+            t = np.mean(grasps_vertex, axis = 0)
+            R = utils.look_at_general(t, approach_direction)
+            T_grasp_world = RigidTransform(rotation=R[:3, :3], translation = t)
+            T_grasp_worlds.append(T_grasp_world)
+            print(T_grasp_worlds)
+        return T_grasp_worlds
 
 
 
@@ -288,10 +291,9 @@ class GraspingPolicy():
              call vertices_to_baxter_hand_pose(grasps, approach_direction)
 
         """
-        topN = 10
+        topN = 1
 
         samples, face_index = trimesh.sample.sample_surface_even(mesh, self.n_facets)
-        print("mesh", mesh._center_mass)
         vertices = mesh.vertices
         faces = mesh.faces
         face_normals = mesh.face_normals
@@ -302,16 +304,16 @@ class GraspingPolicy():
         grasp_vertices, grasp_normals = self.sample_grasps(samples,normals)
         grasp_qualities = self.score_grasps(grasp_vertices,grasp_normals,OBJECT_MASS[obj_name])
 
-        if vis:
+        if vis and False:
             self.vis(mesh, grasp_vertices, grasp_qualities)
 
         top_n_idx = np.argsort(grasp_qualities)[-topN:]
-        top_n_grasp_vertices = [grasp_qualities[i] for i in top_n_idx]
-        top_n_grasp_normals = [grasp_qualities[i] for i in top_n_idx]
+        top_n_grasp_vertices = [grasp_vertices[i] for i in top_n_idx]
+        top_n_grasp_normals = [grasp_normals[i] for i in top_n_idx]
         #top_n_grasp_scores = [grasp_qualities[i] for i in top_n_idx] #maybe we will need this...
 
         # How should we think about the approach direction
-        approach_direction = np.mean(np.array(grasp_normals),axis=1)
-        vertices_to_baxter_hand_pose(grasp_vertices, approach_direction)
+        approach_direction = np.mean(np.array(top_n_grasp_normals),axis=1)
+        return self.vertices_to_baxter_hand_pose(top_n_grasp_vertices, approach_direction)
 
-        return top_n_grasp_vertices, top_n_grasp_normals
+         

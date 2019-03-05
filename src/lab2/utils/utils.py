@@ -203,8 +203,7 @@ def look_at_general(origin, direction):
     up = vec(0,0,1)
     z = normalize(direction)
     x = normalize(np.cross(up, z))
-    y = np.cross(z, x) 
-
+    y = normalize(np.cross(z, x))
     result = np.eye(4)
     result[0:3,0] = x
     result[0:3,1] = y

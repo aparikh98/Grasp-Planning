@@ -249,4 +249,16 @@ def compute_custom_metric(vertices, normals, num_facets, mu, gamma, object_mass)
     float : quality of the grasp
     """
     # YOUR CODE HERE :)
-    raise NotImplementedError
+    for scale_mu  in np.linspace(0, mu, 10):
+        mu = np.random.normal(loc = mu, scale = scale_mu)
+
+    for scale_gamma  in np.linspace(0, gamma, 10):
+        gamma = np.random.normal(loc = gamma, scale = scale_gamma)
+
+    for scale_vertices  in np.linspace(0, 0.01, 10):
+        vertices = np.random.normal(loc = vertices, scale = scale_vertices)
+
+    for scale_normals in np.linspace(0, 0.01, 10):
+        normals = np.random.normal(loc = normals, scale = scale_normals)
+
+    compute_force_closure(vertices, normals, num_facets, mu, gamma, object_mass)   
