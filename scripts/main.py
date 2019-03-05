@@ -8,14 +8,18 @@ import scipy
 import sys
 import argparse
 
+# 106B lab imports
+import os
+sys.path.append(os.getcwd().replace('scripts','') + '/src/')
+sys.path.append(os.getcwd().replace('scripts','') + '/src/lab2')
+print("sys path", sys.path)
+from lab2.policies import GraspingPolicy
+
 # AutoLab imports
 from autolab_core import RigidTransform
 import trimesh
 
-# 106B lab imports
-import os
-sys.path.append(os.getcwd().replace('scripts','') + '/src/')
-from lab2.policies import GraspingPolicy
+
 
 try:
     import rospy
