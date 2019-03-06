@@ -176,12 +176,12 @@ def contact_forces_exist(vertices, normals, num_facets, mu, gamma, desired_wrenc
 
     l = np.asarray(-np.inf*np.ones((18,1)))
     u = np.asarray(np.zeros((18,1)))
-    print(np.shape(P),np.shape(q),np.shape(A),np.shape(l),np.shape(u))
+
     m = osqp.OSQP()
 
     m.setup(P=P, q=q, A=A, l=l, u= u)
     results = m.solve()
-    print(results.x)
+
     epsilon = 0.01
 
     f = np.asarray([results.x[0],results.x[1],results.x[2], results.x[3],
@@ -219,7 +219,7 @@ def compute_gravity_resistance(vertices, normals, num_facets, mu, gamma, object_
     """
     # Design the gravity wrench, call contact_forces_exist on that
     # YOUR CODE HERE (contact forces exist may be useful here)
-    print()
+
     g = np.array([0,0,-9.81 * object_mass,0,0,0]).reshape((6,1))
 
     return contact_forces_exist(vertices, normals, num_facets, mu, gamma, g)

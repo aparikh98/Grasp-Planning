@@ -202,6 +202,9 @@ def look_at_general(origin, direction):
     """
     up = vec(0,0,1)
     z = normalize(direction)
+    if np.linalg.norm(np.cross(up, z)) < 0.0001: # they are parallel
+        up = vec(0,1,0)
+
     x = normalize(np.cross(up, z))
     y = normalize(np.cross(z, x))
     result = np.eye(4)

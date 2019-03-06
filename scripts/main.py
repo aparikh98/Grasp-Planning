@@ -54,7 +54,9 @@ def lookup_transform(to_frame, from_frame='base'):
     if not ros_enabled:
         print( 'I am the lookup transform function!  ' \
             + 'You\'re not using ROS, so I\'m returning the Identity Matrix.')
-        return RigidTransform(translation = tag_pos, to_frame=from_frame, from_frame=to_frame)
+        return RigidTransform(to_frame=from_frame, from_frame=to_frame)
+        #return RigidTransform(translation = tag_pos, to_frame=from_frame, from_frame=to_frame)
+
     listener = tf.TransformListener()
     attempts, max_attempts, rate = 0, 10, rospy.Rate(1.0)
     while attempts < max_attempts:
@@ -182,7 +184,7 @@ def parse_args():
                         help='How many grasps you want to sample.  Default: 500')
     parser.add_argument('-n_execute', type=int, default=5,
                         help='How many grasps you want to execute.  Default: 5')
-    parser.add_argument('-metric', '-m', type=str, default='compute_force_closure', help="""Which grasp metric in grasp_metrics.py to use.
+    parser.add_argument('-metric', '-m', type=str, default='compute_gravity_resistance', help="""Which grasp metric in grasp_metrics.py to use.
         Options: compute_force_closure, compute_gravity_resistance, compute_custom_metric"""
                         )
     parser.add_argument('-arm', '-a', type=str, default='right', help='Options: left, right.  Default: left'
