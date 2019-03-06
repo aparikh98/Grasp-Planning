@@ -28,6 +28,7 @@ MAX_HAND_DISTANCE = .04
 MIN_HAND_DISTANCE = .01
 CONTACT_MU = 0.5
 CONTACT_GAMMA = 0.1
+TABLE_Z = 0.093
 
 # TODO
 OBJECT_MASS = {'gearbox': .25, 'nozzle': .25, 'pawn': .25}
@@ -82,7 +83,6 @@ class GraspingPolicy():
             R = utils.look_at_general(t, approach_direction)
             T_grasp_world = RigidTransform(rotation=R[:3, :3], translation = t)
             T_grasp_worlds.append(T_grasp_world)
-            print(T_grasp_worlds)
         return T_grasp_worlds
 
 
@@ -127,7 +127,7 @@ class GraspingPolicy():
         new_normals = []
 
         for vertex, normal in zip(vertices,normals):
-            if True: #vertex[2] > 0.03: # vertice is 3cm over table
+            if vertex[2] > 0.03 + TABLE_Z : # vertice is 3cm over table
                 new_vertices.append(vertex)
                 new_normals.append(normal)
         new_vertices = np.array(new_vertices)
@@ -152,7 +152,7 @@ class GraspingPolicy():
 
             distance = np.linalg.norm(vertex1 - vertex2)
 
-            if distance != 0:#> MIN_HAND_DISTANCE and distance < MAX_HAND_DISTANCE:
+            if distance > MIN_HAND_DISTANCE and distance < MAX_HAND_DISTANCE:
                 grasp_vertices.append([vertex1, vertex2])
                 grasp_normals.append([new_normals[c1,:].flatten(),new_normals[c2,:].flatten()])
                 i += 1
@@ -291,7 +291,7 @@ class GraspingPolicy():
              call vertices_to_baxter_hand_pose(grasps, approach_direction)
 
         """
-        topN = 10
+        topN = 1
 
         samples, face_index = trimesh.sample.sample_surface_even(mesh, self.n_facets)
         vertices = mesh.vertices
@@ -304,7 +304,7 @@ class GraspingPolicy():
         grasp_vertices, grasp_normals = self.sample_grasps(samples,normals)
         grasp_qualities = self.score_grasps(grasp_vertices,grasp_normals,OBJECT_MASS[obj_name])
 
-        if vis and False:
+        if vis:
             self.vis(mesh, grasp_vertices, grasp_qualities)
 
         top_n_idx = np.argsort(grasp_qualities)[-topN:][::-1]

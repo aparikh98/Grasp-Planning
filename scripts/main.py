@@ -12,7 +12,6 @@ import argparse
 import os
 sys.path.append(os.getcwd().replace('scripts','') + '/src/')
 sys.path.append(os.getcwd().replace('scripts','') + '/src/lab2')
-print("sys path", sys.path)
 from lab2.policies import GraspingPolicy
 
 # AutoLab imports
@@ -50,22 +49,24 @@ def lookup_transform(to_frame, from_frame='base'):
     -------
     :obj:`autolab_core.RigidTransform` AR tag position or object in world coordinates
     """
-    # if not ros_enabled:
-    print( 'I am the lookup transform function!  ' \
-        + 'You\'re not using ROS, so I\'m returning the Identity Matrix.')
-    return RigidTransform(to_frame=from_frame, from_frame=to_frame)
-    # listener = tf.TransformListener()
-    # attempts, max_attempts, rate = 0, 10, rospy.Rate(1.0)
-    # while attempts < max_attempts:
-    #     try:
-    #         t = listener.getLatestCommonTime(from_frame, to_frame)
-    #         tag_pos, tag_rot = listener.lookupTransform(
-    #             from_frame, to_frame, t)
-    #     except:
-    #         rate.sleep()
-    #         attempts += 1
-    # rot = RigidTransform.rotation_from_quaternion(tag_rot)
-    # return RigidTransform(rot, tag_pos, to_frame=from_frame, from_frame=to_frame)
+    if to_frame =='pawn':
+        to_frame = 'ar_marker_9'
+    if not ros_enabled:
+        print( 'I am the lookup transform function!  ' \
+            + 'You\'re not using ROS, so I\'m returning the Identity Matrix.')
+        return RigidTransform(translation = tag_pos, to_frame=from_frame, from_frame=to_frame)
+    listener = tf.TransformListener()
+    attempts, max_attempts, rate = 0, 10, rospy.Rate(1.0)
+    while attempts < max_attempts:
+        try:
+            t = listener.getLatestCommonTime(from_frame, to_frame)
+            tag_pos, tag_rot = listener.lookupTransform(
+                from_frame, to_frame, t)
+        except:
+            rate.sleep()
+            attempts += 1
+    rot = RigidTransform.rotation_from_quaternion(tag_rot)
+    return RigidTransform(rot, tag_pos, to_frame=from_frame, from_frame=to_frame)
 
 
 def execute_grasp(T_grasp_world, planner, gripper):
@@ -95,58 +96,64 @@ def execute_grasp(T_grasp_world, planner, gripper):
 
     final_position = T_grasp_world.position
     final_quaternion = T_grasp_world.quaternion
-    eucl_orientation = tfs.euler_from_quaternion(T_grasp_world.quaternion)
-    
-    final_pose = Pose()
-    final_pose.position.x = final_position[0]
-    final_pose.position.y = final_position[1]
-    final_pose.position.z = final_position[2]
-    final_pose.orientation.x = final_quaternion[0]
-    final_pose.orientation.y = final_quaternion[1]
-    final_pose.orientation.z = final_quaternion[2]
-    final_pose.orientation.w = final_quaternion[3]
+    eucl_orientation = T_grasp_world.euler_angles
+    print(eucl_orientation)
+    final_pose = PoseStamped()
+    final_pose.header.frame_id = "base"
+    final_pose.pose.position.x = final_position[0]
+    final_pose.pose.position.y = final_position[1]
+    final_pose.pose.position.z = final_position[2]
+    final_pose.pose.orientation.x = final_quaternion[0]
+    final_pose.pose.orientation.y = final_quaternion[1]
+    final_pose.pose.orientation.z = final_quaternion[2]
+    final_pose.pose.orientation.w = final_quaternion[3]
     print("Final Pose", final_pose)
 
-    orien_const = OrientationConstraint()
-    orien_const.link_name = "left_gripper";
-    orien_const.header.frame_id = "base";
-    orien_const.orientation = final_pose.orientation
-    orien_const.absolute_x_axis_tolerance = 0.1
-    orien_const.absolute_y_axis_tolerance = 0.1
-    orien_const.absolute_z_axis_tolerance = 0.1
-    orien_const.weight = 1.0
+    # orien_const = OrientationConstraint()
+    # orien_const.link_name = "right_gripper";
+    # orien_const.header.frame_id = "base";
+    # orien_const.orientation = final_pose.pose.orientation
+    # orien_const.absolute_x_axis_tolerance = 0.1
+    # orien_const.absolute_y_axis_tolerance = 0.1
+    # orien_const.absolute_z_axis_tolerance = 0.1
+    # orien_const.weight = 1.0
    
     alpha = 0.1
-    intermediate_pose = Pose()
-    intermediate_pose.position.x = final_position[0] - eucl_orientation[0] * alpha
-    intermediate_pose.position.y = final_position[1]  - eucl_orientation[1] * alpha
-    intermediate_pose.position.z = final_position[2] - eucl_orientation[2] * alpha
-    intermediate_pose.orientation.x = final_quaternion[0]
-    intermediate_pose.orientation.y = final_quaternion[1]
-    intermediate_pose.orientation.z = final_quaternion[2]
-    intermediate_pose.orientation.w = final_quaternion[3]
+    intermediate_pose = PoseStamped()
+    intermediate_pose.header.frame_id = "base"
+    intermediate_pose.pose.position.x = final_position[0] - eucl_orientation[0] * alpha
+    intermediate_pose.pose.position.y = final_position[1]  - eucl_orientation[1] * alpha
+    intermediate_pose.pose.position.z = final_position[2] - eucl_orientation[2] * alpha
+    intermediate_pose.pose.orientation.x = final_quaternion[0]
+    intermediate_pose.pose.orientation.y = final_quaternion[1]
+    intermediate_pose.pose.orientation.z = final_quaternion[2]
+    intermediate_pose.pose.orientation.w = final_quaternion[3]
 
     print("intermediate Pose", intermediate_pose)
-
-    return
-
-    inp = raw_input('Press <Enter> to move, or \'exit\' to exit')
-
-    plan = planner.plan_to_pose(intermediate_pose, list())
-    planner.execute_plan(intermediate_pose)
+    while not rospy.is_shutdown():
+        try:
+            plan = planner.plan_to_pose(intermediate_pose, list())
+            inp = raw_input('Press <Enter> to move, or \'exit\' to exit')
+            print(plan)
+            if not planner.execute_plan(plan):
+                raise Exception("Execution failed retrying")
+            else:
+                break
+        except Exception as e:
+            print e
 
     inp = raw_input('Press <Enter> to open gripper, or \'exit\' to exit')
     open_gripper()
 
-    inp = raw_input('Press <Enter> to move, or \'exit\' to exit')
-    plan2 = planner.plan_to_pose(final_pose, [orien_const])
+    plan2 = planner.plan_to_pose(final_pose, list())
+    inp = raw_input('Press <Enter> to move, or \'exit\' to exit')   
     planner.execute_plan(plan2)
 
     inp = raw_input('Press <Enter> to close gripper, or \'exit\' to exit')
     close_gripper()
 
+    plan3 = planner.plan_to_pose(intermediate_pose,list())
     inp = raw_input('Press <Enter> to move, or \'exit\' to exit')
-    plan3 = planner.plan_to_pose(intermediate_pose,[orien_const])
     planner.execute_plan(plan3)
 
     inp = raw_input('Press <Enter> to open gripper, or \'exit\' to exit')
@@ -175,10 +182,10 @@ def parse_args():
                         help='How many grasps you want to sample.  Default: 500')
     parser.add_argument('-n_execute', type=int, default=5,
                         help='How many grasps you want to execute.  Default: 5')
-    parser.add_argument('-metric', '-m', type=str, default='compute_custom_metric', help="""Which grasp metric in grasp_metrics.py to use.
+    parser.add_argument('-metric', '-m', type=str, default='compute_force_closure', help="""Which grasp metric in grasp_metrics.py to use.
         Options: compute_force_closure, compute_gravity_resistance, compute_custom_metric"""
                         )
-    parser.add_argument('-arm', '-a', type=str, default='left', help='Options: left, right.  Default: left'
+    parser.add_argument('-arm', '-a', type=str, default='right', help='Options: left, right.  Default: left'
                         )
     parser.add_argument('--baxter', action='store_true', help="""If you don\'t use this flag, you will only visualize the grasps.  This is
         so you can run this on your laptop"""
@@ -196,6 +203,8 @@ if __name__ == '__main__':
 
     # Mesh loading and pre-processing
     mesh = trimesh.load_mesh('objects/{}.obj'.format(args.obj))
+    if args.baxter:
+        rospy.init_node('moveit_node')
     T_obj_world = lookup_transform(args.obj)
     mesh.apply_transform(T_obj_world.matrix)
     mesh.fix_normals()
@@ -215,7 +224,6 @@ if __name__ == '__main__':
 
     # Execute each grasp on the baxter / sawyer
     if args.baxter:
-        rospy.init_node('moveit_node')
         gripper = baxter_gripper.Gripper(args.arm)
         planner = PathPlanner('{}_arm'.format(args.arm))
         gripper.calibrate()
