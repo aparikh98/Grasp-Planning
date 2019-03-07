@@ -244,13 +244,15 @@ class GraspingPolicy():
 
         return normals
 
-    def calculate_approach(self, grasp_vertices, com):
+    def calculate_pos_approach(self, grasp_vertices, com):
         directions = []
+        positions = []
         for grasp_vertex in grasp_vertices:
             midpoint = np.mean(grasp_vertex, axis =0)
             direction = normalize(com - midpoint)
             directions.append(direction)
-        return directions
+            positions.append(midpoint)
+        return zip(positions, directions)
 
 
     def top_n_actions(self, mesh, obj_name, vis=True):
@@ -328,8 +330,8 @@ class GraspingPolicy():
             print(score)
 
         # How should we think about the approach direction
-        approach_directions = self.calculate_approach(top_n_grasp_vertices, com)
+        return self.calculate_pos_approach(top_n_grasp_vertices, com)
         # np.mean(np.array(top_n_grasp_normals),axis=1)
-        return self.vertices_to_baxter_hand_pose(top_n_grasp_vertices, approach_directions), approach_directions
+        # return self.vertices_to_baxter_hand_pose(top_n_grasp_vertices, approach_directions), approach_directions
 
          

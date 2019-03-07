@@ -97,14 +97,16 @@ def execute_grasp(T_grasp_world, planner, gripper):
         """opens the gripper"""
         gripper.open(block=True)
         rospy.sleep(1.0)
-
-    final_position = T_grasp_world.position
+    print(T_grasp_world)
+    final_position = np.asarray(T_grasp_world[0])
+    eucl_orientation = np.asarray(T_grasp_world[1])
+    print(eucl_orientation)
+    final_quaternion  = tfs.quaternion_from_euler(eucl_orientation[0], eucl_orientation[1], eucl_orientation[2])
     # final_position = [0.52, 0.167, 0]
     # final_quaternion = [-0.184, 0.981, -0.018, 0.065]
     # final_position = [0.7, -0.2, -0.2]
-    final_quaternion = T_grasp_world.quaternion
-    eucl_orientation = T_grasp_world.euler_angles
-    print(eucl_orientation)
+    # final_quaternion = T_grasp_world.quaternion
+    # eucl_orientation = tfs.euler_from_quaternion(final_quaternion)
 
     final_pose = PoseStamped()
     final_pose.header.frame_id = "base"
@@ -253,7 +255,7 @@ if __name__ == '__main__':
     )
     # Each grasp is represented by T_grasp_world, a RigidTransform defining the
     # position of the end effector
-    T_grasp_worlds, approach_directions = grasping_policy.top_n_actions(mesh, args.obj)
+    T_grasp_worlds = grasping_policy.top_n_actions(mesh, args.obj)
 
     # Execute each grasp on the baxter / sawyer
     if args.baxter:
