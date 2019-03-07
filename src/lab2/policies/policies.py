@@ -28,7 +28,7 @@ MAX_HAND_DISTANCE = .04
 MIN_HAND_DISTANCE = .01
 CONTACT_MU = 0.5
 CONTACT_GAMMA = 0.1
-TABLE_Z = 0.093
+TABLE_Z = -0.24
 
 # TODO
 OBJECT_MASS = {'gearbox': .25, 'nozzle': .25, 'pawn': .25}
@@ -79,6 +79,7 @@ class GraspingPolicy():
         T_grasp_worlds = []
         #need to call
         for grasps_vertex, approach_direction in zip(grasp_vertices, approach_directions):
+            print("GRASP VERTEX", grasps_vertex, "APPROACH", approach_direction)
             t = np.mean(grasps_vertex, axis = 0)
             R = utils.look_at_general(t, approach_direction)
             T_grasp_world = RigidTransform(rotation=R[:3, :3], translation = t)
@@ -243,6 +244,15 @@ class GraspingPolicy():
 
         return normals
 
+    def calculate_approach(self, grasp_vertices, com):
+        directions = []
+        for grasp_vertex in grasp_vertices:
+            midpoint = np.mean(grasp_vertex, axis =0)
+            direction = normalize(com - midpoint)
+            directions.append(direction)
+        return directions
+
+
     def top_n_actions(self, mesh, obj_name, vis=True):
         """
         call score grasps and return top n
@@ -294,6 +304,8 @@ class GraspingPolicy():
         topN = 1
 
         samples, face_index = trimesh.sample.sample_surface_even(mesh, self.n_facets)
+        com = mesh.center_mass
+        print(com)
         vertices = mesh.vertices
         faces = mesh.faces
         face_normals = mesh.face_normals
@@ -316,7 +328,8 @@ class GraspingPolicy():
             print(score)
 
         # How should we think about the approach direction
-        approach_direction = np.mean(np.array(top_n_grasp_normals),axis=1)
-        return self.vertices_to_baxter_hand_pose(top_n_grasp_vertices, approach_direction)
+        approach_directions = self.calculate_approach(top_n_grasp_vertices, com)
+        # np.mean(np.array(top_n_grasp_normals),axis=1)
+        return self.vertices_to_baxter_hand_pose(top_n_grasp_vertices, approach_directions), approach_directions
 
          
