@@ -195,7 +195,7 @@ class GraspingPolicy():
 
         return np.asarray(scores)
 
-    def vis(self, mesh, grasp_vertices, grasp_qualities):
+    def vis(self, mesh, grasp_vertices, grasp_qualities,top_n_grasp_vertices, approach_directions):
         """
         Pass in any grasp and its associated grasp quality.  this function will plot
         each grasp on the object and plot the grasps as a bar between the points, with
@@ -218,11 +218,20 @@ class GraspingPolicy():
         grasp_endpoints = np.zeros(grasp_vertices.shape)
         grasp_vertices[:, 0] = midpoints + dirs * MAX_HAND_DISTANCE / 2
         grasp_vertices[:, 1] = midpoints - dirs * MAX_HAND_DISTANCE / 2
-        colors = [[255,0,0],[0,255,0],[0,0,255]]
+
         for i, (grasp, quality) in enumerate(zip(grasp_vertices, grasp_qualities)):
             color = [min(1, 2 * (1 - quality)), min(1, 2 * quality), 0, 1]
-            #vis3d.plot3d(grasp, color=colors[i%len(colors)], tube_radius=.001)
             vis3d.plot3d(grasp, color=color, tube_radius=.001)
+
+        blue = [0, 0,255]
+        for i, (grasp, approach_direction) in enumerate(zip(top_n_grasp_vertices,approach_directions)):
+            midpoint = np.mean(grasp,axis=0)
+            approach_direction = np.asarray([midpoint, midpoint - 0.05 * approach_direction])
+            vis3d.plot3d(approach_direction, color=blue, tube_radius=.001)
+
+            vis3d.points(grasp, color=blue, scale=.01)
+
+
         vis3d.show()
 
 
@@ -316,8 +325,6 @@ class GraspingPolicy():
         grasp_vertices, grasp_normals = self.sample_grasps(samples,normals)
         grasp_qualities = self.score_grasps(grasp_vertices,grasp_normals,OBJECT_MASS[obj_name])
 
-        if vis:
-            self.vis(mesh, grasp_vertices, grasp_qualities)
 
         top_n_idx = np.argsort(grasp_qualities)[-topN:][::-1]
         top_n_grasp_vertices = [grasp_vertices[i] for i in top_n_idx]
@@ -327,8 +334,11 @@ class GraspingPolicy():
         for score in top_n_grasp_scores:
             print(score)
 
-        # How should we think about the approach direction
         approach_directions = self.calculate_approach(top_n_grasp_vertices, com)
+
+        if vis:
+            self.vis(mesh, grasp_vertices, grasp_qualities, top_n_grasp_vertices, approach_directions)
+
         # np.mean(np.array(top_n_grasp_normals),axis=1)
         return self.vertices_to_baxter_hand_pose(top_n_grasp_vertices, approach_directions), approach_directions
 

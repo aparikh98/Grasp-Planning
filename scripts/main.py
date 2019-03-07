@@ -10,15 +10,13 @@ import argparse
 
 # 106B lab imports
 import os
-# sys.path.append(os.getcwd().replace('scripts','') + '/src/')
-# sys.path.append(os.getcwd().replace('scripts','') + '/src/lab2')
+sys.path.append(os.getcwd().replace('scripts','') + '/src/')
+sys.path.append(os.getcwd().replace('scripts','') + '/src/lab2')
 from lab2.policies import GraspingPolicy
 
 # AutoLab imports
 from autolab_core import RigidTransform
 import trimesh
-
-
 
 try:
     import rospy
@@ -231,7 +229,7 @@ def parse_args():
 
 if __name__ == '__main__':
     args = parse_args()
-    rospy.init_node('lab2_node')
+    #rospy.init_node('lab2_node')
 
     if True:#args.debug:
         np.random.seed(0)
