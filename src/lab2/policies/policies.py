@@ -13,6 +13,7 @@ matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 from visualization import Visualizer3D as vis3d
 import utils
+import tf.transformations as tfs
 
 # 106B lab imports
 from lab2.metrics import (
@@ -20,7 +21,7 @@ from lab2.metrics import (
     compute_gravity_resistance,
     compute_custom_metric
 )
-from lab2.utils import length, normalize
+from lab2.utils import *
 
 # YOUR CODE HERE
 # probably don't need to change these (BUT confirm that they're correct)
@@ -78,13 +79,15 @@ class GraspingPolicy():
         """
         T_grasp_worlds = []
         #need to call
+        Rs = []
         for grasps_vertex, approach_direction in zip(grasp_vertices, approach_directions):
-            print("GRASP VERTEX", grasps_vertex, "APPROACH", approach_direction)
             t = np.mean(grasps_vertex, axis = 0)
-            R = utils.look_at_general(t, approach_direction)
+            line = (grasps_vertex[1] -grasps_vertex[0])
+            R = utils.look_at_general_2(t, approach_direction, line)
             T_grasp_world = RigidTransform(rotation=R[:3, :3], translation = t)
             T_grasp_worlds.append(T_grasp_world)
-        return T_grasp_worlds
+            Rs.append(R[:3, :3])
+        return T_grasp_worlds, Rs
 
 
 
@@ -161,10 +164,8 @@ class GraspingPolicy():
 
         return np.asarray(grasp_vertices), np.asarray(grasp_normals)
 
-    def score_grasps(self, grasp_vertices, grasp_normals, object_mass):
+    def score_grasps(self, grasp_vertices, grasp_normals, object_mass, mesh):
         """
-        this is pretty easy right, just call the metrics for each of the samples?
-
         takes mesh and returns pairs of contacts and the quality of grasp between the contacts, sorted by quality
 
         Parameters
@@ -189,13 +190,13 @@ class GraspingPolicy():
 
         scores = []
         for grasp_vertice,grasp_normal in zip(grasp_vertices,grasp_normals):
-            score = self.metric(grasp_vertice, grasp_normal, self.n_facets, CONTACT_MU, CONTACT_GAMMA, object_mass)
+            score = self.metric(grasp_vertice, grasp_normal, self.n_facets, CONTACT_MU, CONTACT_GAMMA, object_mass, mesh)
             #score = np.random.rand() + 0.5
             scores.append(score)
 
         return np.asarray(scores)
 
-    def vis(self, mesh, grasp_vertices, grasp_qualities):
+    def vis(self, mesh, grasp_vertices, grasp_qualities,top_n_grasp_vertices, approach_directions, rs, TG):
         """
         Pass in any grasp and its associated grasp quality.  this function will plot
         each grasp on the object and plot the grasps as a bar between the points, with
@@ -218,11 +219,54 @@ class GraspingPolicy():
         grasp_endpoints = np.zeros(grasp_vertices.shape)
         grasp_vertices[:, 0] = midpoints + dirs * MAX_HAND_DISTANCE / 2
         grasp_vertices[:, 1] = midpoints - dirs * MAX_HAND_DISTANCE / 2
-        colors = [[255,0,0],[0,255,0],[0,0,255]]
+
         for i, (grasp, quality) in enumerate(zip(grasp_vertices, grasp_qualities)):
             color = [min(1, 2 * (1 - quality)), min(1, 2 * quality), 0, 1]
-            #vis3d.plot3d(grasp, color=colors[i%len(colors)], tube_radius=.001)
             vis3d.plot3d(grasp, color=color, tube_radius=.001)
+
+        blue = [0, 0,255]
+        light_blue = [50, 50,200]
+
+        for i, (grasp, approach_direction) in enumerate(zip(top_n_grasp_vertices,approach_directions)):
+            midpoint = np.mean(grasp,axis=0)
+            approach_direction = np.asarray([midpoint, midpoint - 0.1 * approach_direction])
+            if (i == 0):
+                vis3d.plot3d(approach_direction, color=blue, tube_radius=.005)
+                vis3d.points(grasp, color=blue, scale=.005)
+            else:
+                vis3d.plot3d(approach_direction, color=light_blue, tube_radius=.001)
+                vis3d.points(grasp, color=light_blue, scale=.001)
+
+
+        x_purp = [204, 0,204]
+        x_axis = np.asarray([midpoint, midpoint + 0.1 *rs[:,0]])
+        y_cyan = [0, 204,204]
+        y_axis = np.asarray([midpoint, midpoint + 0.1 *rs[:, 1]])
+        z_black = [0, 0,0]
+        z_axis = np.asarray([midpoint, midpoint + 0.3 *rs[:, 2]])
+
+        vis3d.plot3d(x_axis, color=x_purp, tube_radius=.005)
+        vis3d.plot3d(y_axis, color=y_cyan, tube_radius=.005)
+        vis3d.plot3d(z_axis, color=z_black, tube_radius=.005)
+
+        origin = np.asarray([0,0,0])
+        x_axis = np.asarray([origin, 0.2 * np.array([1, 0,0])])
+        y_axis = np.asarray([origin, 0.2 * np.array([0, 1,0])])
+        z_axis = np.asarray([origin, 0.2 * np.array([0, 0,1])])
+
+        vis3d.plot3d(x_axis, color=x_purp, tube_radius=.005)
+        vis3d.plot3d(y_axis, color=y_cyan, tube_radius=.005)
+        vis3d.plot3d(z_axis, color=z_black, tube_radius=.005)
+
+        eucl_orien = np.asarray(tfs.euler_from_quaternion(TG.quaternion))
+        intermediate_pos = TG.position - np.reshape(np.matmul(TG.rotation , np.array([[0], [0], [0.2]])), (1,3))
+        print(intermediate_pos, np.shape(intermediate_pos))
+        red = [255, 0,0]
+        vis3d.points(intermediate_pos, color=red, scale=.01)
+        vis3d.points(TG.position, color=red, scale=.01)
+
+
+
         vis3d.show()
 
 
@@ -252,7 +296,7 @@ class GraspingPolicy():
             direction = normalize(com - midpoint)
             directions.append(direction)
             positions.append(midpoint)
-        return zip(positions, directions)
+        return positions, directions
 
 
     def top_n_actions(self, mesh, obj_name, vis=True):
@@ -303,9 +347,9 @@ class GraspingPolicy():
              call vertices_to_baxter_hand_pose(grasps, approach_direction)
 
         """
-        topN = 1
+        topN = 10
 
-        samples, face_index = trimesh.sample.sample_surface_even(mesh, self.n_facets)
+        samples, face_index = trimesh.sample.sample_surface_even(mesh, 500)
         com = mesh.center_mass
         print(com)
         vertices = mesh.vertices
@@ -316,10 +360,8 @@ class GraspingPolicy():
         normals = face_normals[face_index]
 
         grasp_vertices, grasp_normals = self.sample_grasps(samples,normals)
-        grasp_qualities = self.score_grasps(grasp_vertices,grasp_normals,OBJECT_MASS[obj_name])
+        grasp_qualities = self.score_grasps(grasp_vertices,grasp_normals,OBJECT_MASS[obj_name], mesh)
 
-        if vis:
-            self.vis(mesh, grasp_vertices, grasp_qualities)
 
         top_n_idx = np.argsort(grasp_qualities)[-topN:][::-1]
         top_n_grasp_vertices = [grasp_vertices[i] for i in top_n_idx]
@@ -330,8 +372,14 @@ class GraspingPolicy():
             print(score)
 
         # How should we think about the approach direction
-        return self.calculate_pos_approach(top_n_grasp_vertices, com)
-        # np.mean(np.array(top_n_grasp_normals),axis=1)
-        # return self.vertices_to_baxter_hand_pose(top_n_grasp_vertices, approach_directions), approach_directions
+        # self.calculate_approach(top_n_grasp_vertices, com)
+        positions, approach_directions = self.calculate_pos_approach(top_n_grasp_vertices, com)
 
+        # np.mean(np.array(top_n_grasp_normals),axis=1)
+        T_grasp_worlds, Rs =  self.vertices_to_baxter_hand_pose(top_n_grasp_vertices, approach_directions)
+        if vis:
+            self.vis(mesh, grasp_vertices, grasp_qualities, top_n_grasp_vertices, approach_directions, Rs[0], T_grasp_worlds[0])
+
+        return T_grasp_worlds
+        # return zip(positions, approach_directions)
          

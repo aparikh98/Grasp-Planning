@@ -202,8 +202,37 @@ def look_at_general(origin, direction):
     """
     up = vec(0,0,1)
     z = normalize(direction)
-    if np.linalg.norm(np.cross(up, z)) < 0.0001: # they are parallel
-        up = vec(0,1,0)
+    # if np.linalg.norm(np.cross(up, z)) < 0.0001: # they are parallel
+    #     up = vec(0,1,0)
+
+    x = normalize(np.cross(up, z))
+    y = normalize(np.cross(z, x))
+    result = np.eye(4)
+    result[0:3,0] = x
+    result[0:3,1] = y
+    result[0:3,2] = z
+    result[0:3,3] = origin
+    return result
+
+def look_at_general_2(origin, direction, up):
+    """
+    Creates a 3D Rotation Matrix at the origin such that the z axis is the same
+    as the direction specified.  There are infinitely many of such matrices, 
+    but we choose the one where the x axis is as vertical as possible.  
+
+    Parameters
+    ----------
+    origin : 3x1 :obj:`numpy.ndarray`
+    x : 3x1 :obj:`numpy.ndarray`
+
+    Returns
+    -------
+    4x4 :obj:`numpy.ndarray`
+    """
+    # up = vec(0,0,1)
+    z = normalize(direction)
+    # if np.linalg.norm(np.cross(up, z)) < 0.0001: # they are parallel
+    #     up = vec(0,1,0)
 
     x = normalize(np.cross(up, z))
     y = normalize(np.cross(z, x))

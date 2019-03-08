@@ -11,8 +11,9 @@ import math
 import osqp
 import scipy.sparse as sparse
 from numpy.linalg import norm
+# from trimesh.ray import ray_triangle as rt
 
-def compute_force_closure(vertices, normals, num_facets, mu, gamma, object_mass):
+def compute_force_closure(vertices, normals, num_facets, mu, gamma, object_mass, mesh):
     """
     Compute the force closure of some object at contacts, with normal vectors
     stored in normals You can use the line method described in HW2.  if you do you
@@ -192,7 +193,7 @@ def contact_forces_exist(vertices, normals, num_facets, mu, gamma, desired_wrenc
     else:
         return False
 
-def compute_gravity_resistance(vertices, normals, num_facets, mu, gamma, object_mass):
+def compute_gravity_resistance(vertices, normals, num_facets, mu, gamma, object_mass, mesh):
     """
     Gravity produces some wrench on your object.  Computes whether the grasp can
     produce and equal and opposite wrench
@@ -224,7 +225,7 @@ def compute_gravity_resistance(vertices, normals, num_facets, mu, gamma, object_
 
     return contact_forces_exist(vertices, normals, num_facets, mu, gamma, g)
 
-def compute_custom_metric(vertices, normals, num_facets, mu, gamma, object_mass):
+def compute_custom_metric(vertices, normals, num_facets, mu, gamma, object_mass, mesh):
     """
     I suggest Ferrari Canny, but feel free to do anything other metric you find.
 
@@ -257,15 +258,35 @@ def compute_custom_metric(vertices, normals, num_facets, mu, gamma, object_mass)
 
     num_experiments = 100
     avg_force_close = 0.0
+    num_count = 0
+
+    # Ray_object = rt.RayMeshIntersector(mesh)
 
     for i in range(num_experiments):
         mu_noise = np.random.normal(loc = mu, scale = scale_mu)
         gamma_noise = np.random.normal(loc = gamma, scale = scale_gamma)
         vertices_noise = np.random.normal(loc = vertices, scale = scale_vertices)
-        normals_noise = np.random.normal(loc = normals, scale = scale_normals)
 
-        force_closure = compute_force_closure(vertices_noise, normals_noise, num_facets, mu_noise, gamma_noise, object_mass)
+        print(vertices_noise[0,:], np.shape(vertices_noise[0,:]), mesh.center_mass, np.shape(mesh.center_mass))
+
+        vertex_0, index_ray0, index_tri_0 = mesh.ray.intersects_location(np.asarray(vertices_noise[0,:]), np.asarray(mesh.center_mass) - np.asarray(vertices_noise[0,:]))
+        if len(vertex_0) == 0 or np.linalg.norm(vertex_0[0], vertices_noise[0]) >= scale_vertices * 3: 
+            continue
+
+        normal_0 = mesh.face_normals[index_tri_0[0]]
+   
+        print(vertex_0, np.shape(vertex_0), normal_0, np.shape(normal_0), mesh.center_mass, np.shape(mesh.center_mass))
+
+        vertex_1, index_ray1, index_tri_1 = mesh.ray.intersects_location(np.asarray(vertices_noise[1,:]), np.asarray(mesh.center_mass) - np.asarray(vertices_noise[1,:]))
+        if len(vertex_1) == 0 or np.linalg.norm(vertex_1[0], vertices_noise[1]) >= scale_vertices * 3: 
+            continue
+
+        normal_1 = mesh.face_normals[index_tri_1[0]]
+        new_vertices = np.asarray([vertex_0[0], vertex_1[0]])
+
+        force_closure = compute_force_closure(new_vertices, new_normals, num_facets, mu_noise, gamma_noise, object_mass)
+        num_count += 1
         if force_closure:
             avg_force_close += 1.0
-
-    return (avg_force_close / num_experiments)
+    print(num_count)
+    return (avg_force_close / num_count)

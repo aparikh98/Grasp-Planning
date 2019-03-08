@@ -10,6 +10,7 @@ import moveit_commander
 from moveit_msgs.msg import OrientationConstraint, Constraints, CollisionObject
 from geometry_msgs.msg import PoseStamped
 from shape_msgs.msg import SolidPrimitive
+import trimesh
 
 class PathPlanner(object):
     """
