@@ -13,7 +13,7 @@ matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 from visualization import Visualizer3D as vis3d
 import utils
-import tf.transformations as tfs
+#import tf.transformations as tfs
 
 # 106B lab imports
 from lab2.metrics import (
@@ -258,12 +258,12 @@ class GraspingPolicy():
         vis3d.plot3d(y_axis, color=y_cyan, tube_radius=.005)
         vis3d.plot3d(z_axis, color=z_black, tube_radius=.005)
 
-        eucl_orien = np.asarray(tfs.euler_from_quaternion(TG.quaternion))
-        intermediate_pos = TG.position - np.reshape(np.matmul(TG.rotation , np.array([[0], [0], [0.2]])), (1,3))
-        print(intermediate_pos, np.shape(intermediate_pos))
-        red = [255, 0,0]
-        vis3d.points(intermediate_pos, color=red, scale=.01)
-        vis3d.points(TG.position, color=red, scale=.01)
+        #eucl_orien = np.asarray(tfs.euler_from_quaternion(TG.quaternion))
+        #intermediate_pos = TG.position - np.reshape(np.matmul(TG.rotation , np.array([[0], [0], [0.2]])), (1,3))
+        #print(intermediate_pos, np.shape(intermediate_pos))
+        #red = [255, 0,0]
+        #vis3d.points(intermediate_pos, color=red, scale=.01)
+        #vis3d.points(TG.position, color=red, scale=.01)
 
 
 

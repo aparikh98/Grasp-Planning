@@ -11,7 +11,7 @@ import math
 import osqp
 import scipy.sparse as sparse
 from numpy.linalg import norm
-# from trimesh.ray import ray_triangle as rt
+from trimesh.ray import ray_triangle as rt
 
 def compute_force_closure(vertices, normals, num_facets, mu, gamma, object_mass, mesh):
     """
@@ -253,40 +253,59 @@ def compute_custom_metric(vertices, normals, num_facets, mu, gamma, object_mass,
 
     scale_mu = 0.4
     scale_gamma = 0.5
-    scale_vertices = 0.01
+    scale_vertices = 0.1
     scale_normals = 0.01
 
     num_experiments = 100
     avg_force_close = 0.0
-    num_count = 0
+    num_count = 1
 
-    # Ray_object = rt.RayMeshIntersector(mesh)
+
+
+    Ray_object = rt.RayMeshIntersector(mesh)
+    com = np.asarray([mesh.center_mass])
 
     for i in range(num_experiments):
         mu_noise = np.random.normal(loc = mu, scale = scale_mu)
         gamma_noise = np.random.normal(loc = gamma, scale = scale_gamma)
-        vertices_noise = np.random.normal(loc = vertices, scale = scale_vertices)
 
-        print(vertices_noise[0,:], np.shape(vertices_noise[0,:]), mesh.center_mass, np.shape(mesh.center_mass))
+        while True:
+            try:
+                vertices_noise = np.random.normal(loc=vertices, scale=scale_vertices)
 
-        vertex_0, index_ray0, index_tri_0 = mesh.ray.intersects_location(np.asarray(vertices_noise[0,:]), np.asarray(mesh.center_mass) - np.asarray(vertices_noise[0,:]))
-        if len(vertex_0) == 0 or np.linalg.norm(vertex_0[0], vertices_noise[0]) >= scale_vertices * 3: 
-            continue
+                vertex_noise_0 = np.round(np.asarray([vertices_noise[0, :]]), 4)
+                vertex_noise_1 = np.round(np.asarray([vertices_noise[1, :]]), 4)
+
+                in_0 = Ray_object.contains_points(np.asarray(vertex_noise_0))
+                in_1 = Ray_object.contains_points(np.asarray(vertex_noise_1))
+                break
+            except ValueError:
+                print("point is on the surface - behavior undefined.")
+
+        print("points are ", in_0, in_1)
+        if in_0: # point is inside
+            direction_0 = vertex_noise_0 - com
+        else: # point outside
+            direction_0 = com - vertex_noise_0
+
+        if in_1: # point is inside
+            direction_1 = vertex_noise_1 - com
+        else: # point outside
+            direction_1 = com - vertex_noise_1
+
+        vertex_0, index_ray0, index_tri_0 = Ray_object.intersects_location(vertex_noise_0, direction_0)
+        vertex_1, index_ray1, index_tri_1 = Ray_object.intersects_location(vertex_noise_1, direction_1)
 
         normal_0 = mesh.face_normals[index_tri_0[0]]
-   
-        print(vertex_0, np.shape(vertex_0), normal_0, np.shape(normal_0), mesh.center_mass, np.shape(mesh.center_mass))
+        normal_1 = mesh.face_normals[index_tri_1[1]]
 
-        vertex_1, index_ray1, index_tri_1 = mesh.ray.intersects_location(np.asarray(vertices_noise[1,:]), np.asarray(mesh.center_mass) - np.asarray(vertices_noise[1,:]))
-        if len(vertex_1) == 0 or np.linalg.norm(vertex_1[0], vertices_noise[1]) >= scale_vertices * 3: 
-            continue
-
-        normal_1 = mesh.face_normals[index_tri_1[0]]
         new_vertices = np.asarray([vertex_0[0], vertex_1[0]])
-
+        new_normals = np.asarray([normal_0,normal_1])
+        
         force_closure = compute_force_closure(new_vertices, new_normals, num_facets, mu_noise, gamma_noise, object_mass)
         num_count += 1
         if force_closure:
             avg_force_close += 1.0
+
     print(num_count)
     return (avg_force_close / num_count)
