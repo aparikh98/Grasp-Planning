@@ -258,14 +258,14 @@ def compute_custom_metric(vertices, normals, num_facets, mu, gamma, object_mass,
 
     num_experiments = 100
     avg_force_close = 0.0
-    num_count = 1
+    num_count = 0
 
 
 
     Ray_object = rt.RayMeshIntersector(mesh)
     com = np.asarray([mesh.center_mass])
 
-    for i in range(num_experiments):
+    while num_count < 10:
         mu_noise = np.random.normal(loc = mu, scale = scale_mu)
         gamma_noise = np.random.normal(loc = gamma, scale = scale_gamma)
 
@@ -282,7 +282,7 @@ def compute_custom_metric(vertices, normals, num_facets, mu, gamma, object_mass,
             except ValueError:
                 print("point is on the surface - behavior undefined.")
 
-        print("points are ", in_0, in_1)
+        # print("points are ", in_0, in_1)
         if in_0: # point is inside
             direction_0 = vertex_noise_0 - com
         else: # point outside
@@ -295,17 +295,18 @@ def compute_custom_metric(vertices, normals, num_facets, mu, gamma, object_mass,
 
         vertex_0, index_ray0, index_tri_0 = Ray_object.intersects_location(vertex_noise_0, direction_0)
         vertex_1, index_ray1, index_tri_1 = Ray_object.intersects_location(vertex_noise_1, direction_1)
-
+        if (len(index_tri_0) ==0 or len(index_tri_1) == 0):
+            continue
         normal_0 = mesh.face_normals[index_tri_0[0]]
-        normal_1 = mesh.face_normals[index_tri_1[1]]
+        normal_1 = mesh.face_normals[index_tri_1[0]]
 
         new_vertices = np.asarray([vertex_0[0], vertex_1[0]])
         new_normals = np.asarray([normal_0,normal_1])
         
-        force_closure = compute_force_closure(new_vertices, new_normals, num_facets, mu_noise, gamma_noise, object_mass)
+        force_closure = compute_force_closure(new_vertices, new_normals, num_facets, mu_noise, gamma_noise, object_mass, mesh)
         num_count += 1
         if force_closure:
             avg_force_close += 1.0
 
-    print(num_count)
+    # print(num_count)
     return (avg_force_close / num_count)

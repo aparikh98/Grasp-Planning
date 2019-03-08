@@ -29,7 +29,8 @@ MAX_HAND_DISTANCE = .04
 MIN_HAND_DISTANCE = .01
 CONTACT_MU = 0.5
 CONTACT_GAMMA = 0.1
-TABLE_Z = -0.24
+TABLE_Z =  -0.201
+COM_X =  0.688 
 
 # TODO
 OBJECT_MASS = {'gearbox': .25, 'nozzle': .25, 'pawn': .25}
@@ -131,7 +132,7 @@ class GraspingPolicy():
         new_normals = []
 
         for vertex, normal in zip(vertices,normals):
-            if vertex[2] > 0.03 + TABLE_Z : # vertice is 3cm over table
+            if vertex[2] > 0.03 + TABLE_Z  and vertex[0] < COM_X: # vertice is 3cm over table
                 new_vertices.append(vertex)
                 new_normals.append(normal)
         new_vertices = np.array(new_vertices)
@@ -237,7 +238,7 @@ class GraspingPolicy():
                 vis3d.plot3d(approach_direction, color=light_blue, tube_radius=.001)
                 vis3d.points(grasp, color=light_blue, scale=.001)
 
-
+        midpoint = np.mean(top_n_grasp_vertices[0], axis = 0)
         x_purp = [204, 0,204]
         x_axis = np.asarray([midpoint, midpoint + 0.1 *rs[:,0]])
         y_cyan = [0, 204,204]
@@ -258,12 +259,12 @@ class GraspingPolicy():
         vis3d.plot3d(y_axis, color=y_cyan, tube_radius=.005)
         vis3d.plot3d(z_axis, color=z_black, tube_radius=.005)
 
-        #eucl_orien = np.asarray(tfs.euler_from_quaternion(TG.quaternion))
-        #intermediate_pos = TG.position - np.reshape(np.matmul(TG.rotation , np.array([[0], [0], [0.2]])), (1,3))
-        #print(intermediate_pos, np.shape(intermediate_pos))
-        #red = [255, 0,0]
-        #vis3d.points(intermediate_pos, color=red, scale=.01)
-        #vis3d.points(TG.position, color=red, scale=.01)
+        # eucl_orien = np.asarray(tfs.euler_from_quaternion(TG.quaternion))
+        intermediate_pos = TG.position - np.reshape(np.matmul(TG.rotation , np.array([[0], [0], [0.2]])), (1,3))
+        print(intermediate_pos, np.shape(intermediate_pos))
+        red = [255, 0,0]
+        vis3d.points(intermediate_pos, color=red, scale=.01)
+        vis3d.points(TG.position, color=red, scale=.01)
 
 
 
@@ -362,6 +363,7 @@ class GraspingPolicy():
         grasp_vertices, grasp_normals = self.sample_grasps(samples,normals)
         grasp_qualities = self.score_grasps(grasp_vertices,grasp_normals,OBJECT_MASS[obj_name], mesh)
 
+        print (sum(grasp_qualities), len(grasp_qualities))
 
         top_n_idx = np.argsort(grasp_qualities)[-topN:][::-1]
         top_n_grasp_vertices = [grasp_vertices[i] for i in top_n_idx]
@@ -370,6 +372,7 @@ class GraspingPolicy():
         print("The top n grasp scores are: ")
         for score in top_n_grasp_scores:
             print(score)
+        print (sum(top_n_grasp_scores)/ len(top_n_grasp_scores))
 
         # How should we think about the approach direction
         # self.calculate_approach(top_n_grasp_vertices, com)
