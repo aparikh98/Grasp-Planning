@@ -13,7 +13,7 @@ import scipy.sparse as sparse
 from numpy.linalg import norm
 from trimesh.ray import ray_triangle as rt
 
-def compute_force_closure(vertices, normals, num_facets, mu, gamma, object_mass, mesh):
+def compute_force_closure(vertices, normals, num_facets, mu, gamma, object_mass, mesh, unused):
     """
     Compute the force closure of some object at contacts, with normal vectors
     stored in normals You can use the line method described in HW2.  if you do you
@@ -193,7 +193,7 @@ def contact_forces_exist(vertices, normals, num_facets, mu, gamma, desired_wrenc
     else:
         return False
 
-def compute_gravity_resistance(vertices, normals, num_facets, mu, gamma, object_mass, mesh):
+def compute_gravity_resistance(vertices, normals, num_facets, mu, gamma, object_mass, mesh, unused):
     """
     Gravity produces some wrench on your object.  Computes whether the grasp can
     produce and equal and opposite wrench
@@ -225,7 +225,7 @@ def compute_gravity_resistance(vertices, normals, num_facets, mu, gamma, object_
 
     return contact_forces_exist(vertices, normals, num_facets, mu, gamma, g)
 
-def compute_custom_metric(vertices, normals, num_facets, mu, gamma, object_mass, mesh):
+def compute_custom_metric(vertices, normals, num_facets, mu, gamma, object_mass, mesh, n_run):
     """
     I suggest Ferrari Canny, but feel free to do anything other metric you find.
 
@@ -251,10 +251,10 @@ def compute_custom_metric(vertices, normals, num_facets, mu, gamma, object_mass,
     """
     # YOUR CODE HERE :)
 
-    scale_mu = 0.4
-    scale_gamma = 0.5
-    scale_vertices = 0.1
-    scale_normals = 0.01
+    noise_scale = 1 * n_run /2.0
+    scale_mu = 0.4 * noise_scale
+    scale_gamma = 0.5 * noise_scale
+    scale_vertices = 0.1 * noise_scale
 
     num_experiments = 100
     avg_force_close = 0.0
@@ -303,7 +303,7 @@ def compute_custom_metric(vertices, normals, num_facets, mu, gamma, object_mass,
         new_vertices = np.asarray([vertex_0[0], vertex_1[0]])
         new_normals = np.asarray([normal_0,normal_1])
         
-        force_closure = compute_force_closure(new_vertices, new_normals, num_facets, mu_noise, gamma_noise, object_mass, mesh)
+        force_closure = compute_force_closure(new_vertices, new_normals, num_facets, mu_noise, gamma_noise, object_mass, mesh, n_run)
         num_count += 1
         if force_closure:
             avg_force_close += 1.0

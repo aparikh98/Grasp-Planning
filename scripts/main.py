@@ -30,9 +30,9 @@ try:
 except:
     print( 'Couldn\'t import ROS.  I assume you\'re running this on your laptop')
     ros_enabled = False
-table_h = -0.201
+OBJECT_H = {'gearbox': .056, 'nozzle': .032, 'pawn': .091}
 
-def lookup_transform(to_frame, from_frame='base'):
+def lookup_transform(to_frame, baxter, from_frame='base'):
     """
     Returns the AR tag position in world coordinates
 
@@ -49,24 +49,29 @@ def lookup_transform(to_frame, from_frame='base'):
     """
     # if to_frame =='pawn':
     #     to_frame = 'ar_marker_9'
-    # if not ros_enabled:
-    #     print( 'I am the lookup transform function!  ' \
-    #         + 'You\'re not using ROS, so I\'m returning the Identity Matrix.')
-    #     return RigidTransform(to_frame=from_frame, from_frame=to_frame)
-    #     #return RigidTransform(translation = tag_pos, to_frame=from_frame, from_frame=to_frame)
+    if not baxter:
+        print( 'I am the lookup transform function!  ' \
+            + 'You\'re not using ROS, so I\'m returning the Identity Matrix.')
+        tag_pos =   [0.642, -0.132, -0.023]
+        tag_rot = [-0.001, -0.030, 0.024, 0.999]
 
-    # listener = tf.TransformListener()
-    # attempts, max_attempts, rate = 0, 10, rospy.Rate(1.0)
-    # while attempts < max_attempts:
-    #     try:
-    #         t = listener.getLatestCommonTime(from_frame, to_frame)
-    #         tag_pos, tag_rot = listener.lookupTransform(
-    #             from_frame, to_frame, t)
-    #     except:
-    #         rate.sleep()
-    #         attempts += 1
-    tag_pos =  [0.688, -0.250, -0.112]
-    tag_rot = [0.021, 0.006, -0.024, 0.999]
+        rot = RigidTransform.rotation_from_quaternion(tag_rot)
+        return RigidTransform(rot, tag_pos, to_frame=from_frame, from_frame=to_frame)
+        #return RigidTransform(translation = tag_pos, to_frame=from_frame, from_frame=to_frame)
+
+    listener = tf.TransformListener()
+    attempts, max_attempts, rate = 0, 10, rospy.Rate(1.0)
+    while attempts < max_attempts:
+        try:
+            t = listener.getLatestCommonTime(from_frame, to_frame)
+            tag_pos, tag_rot = listener.lookupTransform(
+                from_frame, to_frame, t)
+            break
+        except:
+            rate.sleep()
+            attempts += 1
+    # tag_pos =   [0.642, -0.132, -0.023]
+    # tag_rot = [-0.001, -0.030, 0.024, 0.999]
 
     rot = RigidTransform.rotation_from_quaternion(tag_rot)
     return RigidTransform(rot, tag_pos, to_frame=from_frame, from_frame=to_frame)
@@ -90,19 +95,19 @@ def execute_grasp(T_grasp_world, planner, gripper):
     def close_gripper():
         """closes the gripper"""
         gripper.close(block=True)
-        rospy.sleep(1.0)
+        rospy.sleep(0.25)
 
     def open_gripper():
         """opens the gripper"""
         gripper.open(block=True)
-        rospy.sleep(1.0)
+        rospy.sleep(0.25)
     # final_position = np.asarray(T_grasp_world[0])
     # eucl_orientation = np.asarray(T_grasp_world[1])
     # print(eucl_orientation)
     # final_quaternion  = tfs.quaternion_from_euler(eucl_orientation[0], eucl_orientation[1], eucl_orientation[2])
     final_position = T_grasp_world.position
     intermediate_position = (T_grasp_world.position - np.reshape(np.matmul(T_grasp_world.rotation , np.array([[0], [0], [0.05]])), (1,3)))[0]
-    final_position = (T_grasp_world.position + np.reshape(np.matmul(T_grasp_world.rotation , np.array([[0], [0], [0.01]])), (1,3)))[0]
+    final_position = (T_grasp_world.position + np.reshape(np.matmul(T_grasp_world.rotation , np.array([[0], [0], [0.02]])), (1,3)))[0]
    
     # final_quaternion = [-0.184, 0.981, -0.018, 0.065]
     # final_position = [0.7, -0.2, -0.2]
@@ -144,13 +149,13 @@ def execute_grasp(T_grasp_world, planner, gripper):
     table_pose.header.frame_id = "base"
     table_pose.pose.position.x = 0
     table_pose.pose.position.y = 0
-    table_pose.pose.position.z = table_h * 2
+    table_pose.pose.position.z = -1
     table_pose.pose.orientation.x = 0
     table_pose.pose.orientation.y = 0
     table_pose.pose.orientation.z = 0
     table_pose.pose.orientation.w = 1
 
-    planner.add_box_obstacle(np.array([2, 2, -2* table_h + 0.04]), "table", table_pose)
+    planner.add_box_obstacle(np.array([2, 2, 2* abs(-1-table_h) + 0.04]), "table", table_pose)
 
    
     intermediate_pose = PoseStamped()
@@ -162,6 +167,27 @@ def execute_grasp(T_grasp_world, planner, gripper):
     intermediate_pose.pose.orientation.y = final_quaternion[1]
     intermediate_pose.pose.orientation.z = final_quaternion[2]
     intermediate_pose.pose.orientation.w = final_quaternion[3]
+
+    above_pose = PoseStamped()
+    above_pose.header.frame_id = "base"
+    above_pose.pose.position.x = final_position[0]
+    above_pose.pose.position.y = final_position[1]
+    above_pose.pose.position.z = final_position[2] + 0.1
+    above_pose.pose.orientation.x = final_quaternion[0]
+    above_pose.pose.orientation.y = final_quaternion[1]
+    above_pose.pose.orientation.z = final_quaternion[2]
+    above_pose.pose.orientation.w = final_quaternion[3]
+
+    place_pose = PoseStamped()
+    place_pose.header.frame_id = "base"
+    place_pose.pose.position.x = final_position[0] + 0.05
+    place_pose.pose.position.y = final_position[1] + 0.05
+    place_pose.pose.position.z = final_position[2]
+    place_pose.pose.orientation.x = final_quaternion[0]
+    place_pose.pose.orientation.y = final_quaternion[1]
+    place_pose.pose.orientation.z = final_quaternion[2]
+    place_pose.pose.orientation.w = final_quaternion[3]
+
 
     print("intermediate Pose", intermediate_pose)
     # while not rospy.is_shutdown():
@@ -183,18 +209,31 @@ def execute_grasp(T_grasp_world, planner, gripper):
 
     plan = planner.plan_to_pose(intermediate_pose, list())
     inp = raw_input('Press <Enter> to move to intermediate_pose, or \'exit\' to exit')
+    if (inp == 'exit'):
+        return
     planner.execute_plan(plan)
 
     plan2 = planner.plan_to_pose(final_pose, [orien_const])
     inp = raw_input('Press <Enter> to move to final pose, or \'exit\' to exit')
+    if (inp == 'exit'):
+        return
+
     planner.execute_plan(plan2)
     
     inp = raw_input('Press <Enter> to close gripper, or \'exit\' to exit')
+    if (inp == 'exit'):
+        return
+
     close_gripper()
 
-    plan = planner.plan_to_pose(intermediate_pose, list())
-    inp = raw_input('Press <Enter> to move to intermediate_pose, or \'exit\' to exit')
+    plan = planner.plan_to_pose(above_pose, [orien_const])
+    inp = raw_input('Press <Enter> to move to above pose, or \'exit\' to exit')
     planner.execute_plan(plan)
+
+    plan = planner.plan_to_pose(place_pose, [orien_const])
+    inp = raw_input('Press <Enter> to move to placepose, or \'exit\' to exit')
+    planner.execute_plan(plan)
+
 
     inp = raw_input('Press <Enter> to open gripper, or \'exit\' to exit')
     open_gripper()
@@ -234,7 +273,7 @@ def parse_args():
     """
     parser = argparse.ArgumentParser()
     parser.add_argument('-obj', type=str, default='pawn', help="""Which Object you\'re trying to pick up.  Options: gearbox, nozzle, pawn.
-        Default: gearbox"""
+        Default: pawn"""
                         )
     parser.add_argument('-n_vert', type=int, default=1000, help='How many vertices you want to sample on the object surface.  Default: 1000'
                         )
@@ -273,11 +312,17 @@ if __name__ == '__main__':
 
     # Mesh loading and pre-processing
     mesh = trimesh.load_mesh('objects/{}.obj'.format(args.obj))
-    T_obj_world = lookup_transform(args.obj)
+    T_obj_world = lookup_transform(args.obj, args.baxter)
     mesh.apply_transform(T_obj_world.matrix)
     mesh.fix_normals()
+    
+    table_h = mesh.center_mass[2] -OBJECT_H[args.obj]
 
-    # This policy takes a mesh and returns the best actions to execute on the robot
+    repeat =True
+    if args.baxter:
+        gripper = baxter_gripper.Gripper(args.arm)
+        planner = PathPlanner('{}_arm'.format(args.arm))
+        gripper.calibrate()
     grasping_policy = GraspingPolicy(
         args.n_vert,
         args.n_grasps,
@@ -285,18 +330,24 @@ if __name__ == '__main__':
         args.n_facets,
         args.metric
     )
-    # Each grasp is represented by T_grasp_world, a RigidTransform defining the
-    # position of the end effector
-    T_grasp_worlds = grasping_policy.top_n_actions(mesh, args.obj)
-
-    n = args.num_exec
-    # Execute each grasp on the baxter / sawyer
     if args.baxter:
-        gripper = baxter_gripper.Gripper(args.arm)
-        planner = PathPlanner('{}_arm'.format(args.arm))
-        gripper.calibrate()
-        repeat =True
+
         while repeat:
-            T_grasp_world = T_grasp_worlds[n]
-            execute_grasp(T_grasp_world, planner, gripper)
-            repeat = raw_input("repeat? [y|n] ") == 'y'
+
+        # This policy takes a mesh and returns the best actions to execute on the robot
+            # Each grasp is represented by T_grasp_world, a RigidTransform defining the
+            # position of the end effector
+            T_grasp_worlds = grasping_policy.top_n_actions(mesh, args.obj)
+
+            n = args.num_exec
+            # Execute each grasp on the baxter / sawyer
+            repeat2 = True
+            while repeat2:
+                gripper = baxter_gripper.Gripper(args.arm)
+                planner = PathPlanner('{}_arm'.format(args.arm))
+                gripper.calibrate()
+                T_grasp_world = T_grasp_worlds[n]
+                execute_grasp(T_grasp_world, planner, gripper)
+                repeat2 = raw_input("repeat? [y|n] ") == 'y'
+            repeat = raw_input("repeat calculation? [y|n] ") == 'y'
+

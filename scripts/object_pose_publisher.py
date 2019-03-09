@@ -74,7 +74,7 @@ if __name__ == '__main__':
 	            broadcaster.sendTransform(
 	                object_template.t_ar_obj, 
 	                object_template.q_ar_obj, 
-	                listener.getLatestCommonTime('base', 'left_hand_camera'), 
+	                listener.getLatestCommonTime('base', 'right_hand_camera'), 
 	                object_template.name, 
 	                object_template.ar_marker
 	            )

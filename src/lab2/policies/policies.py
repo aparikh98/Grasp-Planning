@@ -25,12 +25,13 @@ from lab2.utils import *
 
 # YOUR CODE HERE
 # probably don't need to change these (BUT confirm that they're correct)
-MAX_HAND_DISTANCE = .04
-MIN_HAND_DISTANCE = .01
+MAX_HAND_DISTANCE = .07
+MIN_HAND_DISTANCE = .03
 CONTACT_MU = 0.5
 CONTACT_GAMMA = 0.1
 TABLE_Z =  -0.201
 COM_X =  0.688 
+COM_Z =  -0.112 
 
 # TODO
 OBJECT_MASS = {'gearbox': .25, 'nozzle': .25, 'pawn': .25}
@@ -57,6 +58,7 @@ class GraspingPolicy():
         self.n_vert = n_vert
         self.n_grasps = n_grasps
         self.n_facets = n_facets
+        self.n_runs = 1
         # This is a function, one of the functions in src/lab2/metrics/metrics.py
         self.metric = eval(metric_name)
 
@@ -92,7 +94,7 @@ class GraspingPolicy():
 
 
 
-    def sample_grasps(self, vertices, normals):
+    def sample_grasps(self, vertices, normals, mesh):
         """
 
         Samples a bunch of candidate grasps.  You should randomly choose pairs of vertices and throw out
@@ -127,12 +129,13 @@ class GraspingPolicy():
             otherwise skip
         """
         # TODO when we find the high of the table vs real world position
-
+        com = mesh.center_mass
         new_vertices = []
         new_normals = []
 
         for vertex, normal in zip(vertices,normals):
-            if vertex[2] > 0.03 + TABLE_Z  and vertex[0] < COM_X: # vertice is 3cm over table
+            angle = np.arctan((vertex[2]- com[2] )/(com[0] - vertex[0]))
+            if vertex[2] > com[2]  and vertex[0] < com[0] and  angle >= np.pi/4 and angle <= np.pi/2 : # vertice is 3cm over table
                 new_vertices.append(vertex)
                 new_normals.append(normal)
         new_vertices = np.array(new_vertices)
@@ -191,7 +194,7 @@ class GraspingPolicy():
 
         scores = []
         for grasp_vertice,grasp_normal in zip(grasp_vertices,grasp_normals):
-            score = self.metric(grasp_vertice, grasp_normal, self.n_facets, CONTACT_MU, CONTACT_GAMMA, object_mass, mesh)
+            score = self.metric(grasp_vertice, grasp_normal, self.n_facets, CONTACT_MU, CONTACT_GAMMA, object_mass, mesh, self.n_runs)
             #score = np.random.rand() + 0.5
             scores.append(score)
 
@@ -300,7 +303,7 @@ class GraspingPolicy():
         return positions, directions
 
 
-    def top_n_actions(self, mesh, obj_name, vis=True):
+    def top_n_actions(self, mesh, obj_name, vis=False):
         """
         call score grasps and return top n
 
@@ -360,7 +363,7 @@ class GraspingPolicy():
         #normals = self.calculate_normals(vertices,faces)
         normals = face_normals[face_index]
 
-        grasp_vertices, grasp_normals = self.sample_grasps(samples,normals)
+        grasp_vertices, grasp_normals = self.sample_grasps(samples,normals, mesh)
         grasp_qualities = self.score_grasps(grasp_vertices,grasp_normals,OBJECT_MASS[obj_name], mesh)
 
         print (sum(grasp_qualities), len(grasp_qualities))
@@ -382,7 +385,7 @@ class GraspingPolicy():
         T_grasp_worlds, Rs =  self.vertices_to_baxter_hand_pose(top_n_grasp_vertices, approach_directions)
         if vis:
             self.vis(mesh, grasp_vertices, grasp_qualities, top_n_grasp_vertices, approach_directions, Rs[0], T_grasp_worlds[0])
-
+        self.n_runs += 1
         return T_grasp_worlds
         # return zip(positions, approach_directions)
          
