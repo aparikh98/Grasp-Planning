@@ -251,9 +251,10 @@ def compute_custom_metric(vertices, normals, num_facets, mu, gamma, object_mass,
     """
     # YOUR CODE HERE :)
 
-    noise_scale = 1 * n_run /2.0
-    scale_mu = 0.4 * noise_scale
-    scale_gamma = 0.5 * noise_scale
+    noise_scale = 1.5 * n_run /3.0
+
+    scale_mu = mu * noise_scale
+    scale_gamma = gamma * noise_scale
     scale_vertices = 0.1 * noise_scale
 
     num_experiments = 100

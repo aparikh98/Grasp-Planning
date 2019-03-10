@@ -95,12 +95,12 @@ def execute_grasp(T_grasp_world, planner, gripper):
     def close_gripper():
         """closes the gripper"""
         gripper.close(block=True)
-        rospy.sleep(0.25)
+        rospy.sleep(1)
 
     def open_gripper():
         """opens the gripper"""
         gripper.open(block=True)
-        rospy.sleep(0.25)
+        rospy.sleep(1)
     # final_position = np.asarray(T_grasp_world[0])
     # eucl_orientation = np.asarray(T_grasp_world[1])
     # print(eucl_orientation)
@@ -296,7 +296,7 @@ def parse_args():
                         )
     parser.add_argument('--debug', action='store_true', help='Whether or not to use a random seed'
                         )
-    parser.add_argument('-num_exec', '-n', type=int, default='0', help='Options: 0, 1,..top_n_actions.  Default: 0'
+    parser.add_argument('-noise_level', '-n', type=int, default='1', help='Noise level to use'
                     )
 
     return parser.parse_args()
@@ -319,35 +319,34 @@ if __name__ == '__main__':
     table_h = mesh.center_mass[2] -OBJECT_H[args.obj]
 
     repeat =True
-    if args.baxter:
-        gripper = baxter_gripper.Gripper(args.arm)
-        planner = PathPlanner('{}_arm'.format(args.arm))
-        gripper.calibrate()
+    # gripper = baxter_gripper.Gripper(args.arm)
+    # planner = PathPlanner('{}_arm'.format(args.arm))
+    # gripper.calibrate()
+    print("CALIBRATED GRIPPER")
     grasping_policy = GraspingPolicy(
         args.n_vert,
         args.n_grasps,
         args.n_execute,
         args.n_facets,
-        args.metric
+        args.metric,
+        args.noise_level
     )
-    if args.baxter:
+    gripper = baxter_gripper.Gripper(args.arm)
+    planner = PathPlanner('{}_arm'.format(args.arm))
 
-        while repeat:
+    while repeat:
 
-        # This policy takes a mesh and returns the best actions to execute on the robot
-            # Each grasp is represented by T_grasp_world, a RigidTransform defining the
-            # position of the end effector
-            T_grasp_worlds = grasping_policy.top_n_actions(mesh, args.obj)
+    # This policy takes a mesh and returns the best actions to execute on the robot
+        # Each grasp is represented by T_grasp_world, a RigidTransform defining the
+        # position of the end effector
+        T_grasp_worlds = grasping_policy.top_n_actions(mesh, args.obj)
 
-            n = args.num_exec
-            # Execute each grasp on the baxter / sawyer
-            repeat2 = True
-            while repeat2:
-                gripper = baxter_gripper.Gripper(args.arm)
-                planner = PathPlanner('{}_arm'.format(args.arm))
-                gripper.calibrate()
-                T_grasp_world = T_grasp_worlds[n]
-                execute_grasp(T_grasp_world, planner, gripper)
-                repeat2 = raw_input("repeat? [y|n] ") == 'y'
-            repeat = raw_input("repeat calculation? [y|n] ") == 'y'
+        # Execute each grasp on the baxter / sawyer
+        repeat2 = True
+        while repeat2:
+            gripper.calibrate()
+            T_grasp_world = T_grasp_worlds[0]
+            execute_grasp(T_grasp_world, planner, gripper)
+            repeat2 = raw_input("repeat? [y|n] ") == 'y'
+        repeat = raw_input("add noise ") == 'y'
 

@@ -38,7 +38,7 @@ OBJECT_MASS = {'gearbox': .25, 'nozzle': .25, 'pawn': .25}
 
 
 class GraspingPolicy():
-    def __init__(self, n_vert, n_grasps, n_execute, n_facets, metric_name):
+    def __init__(self, n_vert, n_grasps, n_execute, n_facets, metric_name, noise_level):
         """
         Parameters
         ----------
@@ -58,7 +58,7 @@ class GraspingPolicy():
         self.n_vert = n_vert
         self.n_grasps = n_grasps
         self.n_facets = n_facets
-        self.n_runs = 1
+        self.noise_level = noise_level
         # This is a function, one of the functions in src/lab2/metrics/metrics.py
         self.metric = eval(metric_name)
 
@@ -194,7 +194,7 @@ class GraspingPolicy():
 
         scores = []
         for grasp_vertice,grasp_normal in zip(grasp_vertices,grasp_normals):
-            score = self.metric(grasp_vertice, grasp_normal, self.n_facets, CONTACT_MU, CONTACT_GAMMA, object_mass, mesh, self.n_runs)
+            score = self.metric(grasp_vertice, grasp_normal, self.n_facets, CONTACT_MU, CONTACT_GAMMA, object_mass, mesh, self.noise_level)
             #score = np.random.rand() + 0.5
             scores.append(score)
 
@@ -302,8 +302,8 @@ class GraspingPolicy():
             positions.append(midpoint)
         return positions, directions
 
-
-    def top_n_actions(self, mesh, obj_name, vis=False):
+# 
+    def top_n_actions(self, mesh, obj_name, vis=True):
         """
         call score grasps and return top n
 
@@ -385,7 +385,8 @@ class GraspingPolicy():
         T_grasp_worlds, Rs =  self.vertices_to_baxter_hand_pose(top_n_grasp_vertices, approach_directions)
         if vis:
             self.vis(mesh, grasp_vertices, grasp_qualities, top_n_grasp_vertices, approach_directions, Rs[0], T_grasp_worlds[0])
-        self.n_runs += 1
+        self.noise_level += 1
+        print("NOISE LEVEL", self.noise_level)
         return T_grasp_worlds
         # return zip(positions, approach_directions)
          
